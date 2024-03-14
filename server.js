@@ -111,6 +111,7 @@ app.post("/login", async (req, res) => {
 
 // 2 - REGISTRAR USER
 app.post("/register", async (req, res) => {
+  console.log('register')
   const { name, email, password } = req.body;
 
   try {
@@ -955,7 +956,7 @@ app.get("/materiais/:conteudo_id", async (req, res) => {
 // EXTRA PARA UPLOADS DE IMAGENS
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
-const PORT = process.env.PORT || 4000;
+const PORT = process.env.PORT || 49285;
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
