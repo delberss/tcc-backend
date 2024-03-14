@@ -152,13 +152,16 @@ const pool = new Pool({
 
 
 // 9 - TABELA respostas
+
 // CREATE TABLE respostas (
 //     id SERIAL PRIMARY KEY,
 //     user_id INTEGER REFERENCES users(user_id),
 //     pergunta_id INTEGER REFERENCES perguntas(id),
 //     resposta_do_usuario CHAR(1),
-//     resposta_correta BOOLEAN
+//     resposta_correta BOOLEAN,
+//     UNIQUE(user_id, pergunta_id)
 // );
+
 
 
 
