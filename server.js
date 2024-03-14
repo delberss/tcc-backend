@@ -82,7 +82,7 @@ app.post("/login", async (req, res) => {
             email: user.email,
             profileImageUrl: user.profile_image_url,
             preferenciaEstudo: user.preferencia_estudo,
-            pontuacaoGeral: user.pontuacao_geral
+            pontuacaoGeral: user.pontuacao_geral,
           },
           token: token,
         });
@@ -145,8 +145,8 @@ app.post("/register", async (req, res) => {
       await client.query("BEGIN");
 
       const insertSTMT =
-        "INSERT INTO users (name, email, password) VALUES ($1, $2, $3)";
-      const values = [formattedName, email.toLowerCase(), hashedPassword];
+        "INSERT INTO users (name, email, password, pontuacao_geral) VALUES ($1, $2, $3, $4)";
+      const values = [formattedName, email.toLowerCase(), hashedPassword, 0];
 
       await client.query(insertSTMT, values);
 
@@ -181,7 +181,7 @@ app.get("/users", verifyToken, async (req, res) => {
       name: user.name,
       email: user.email,
       profile_image_url: user.profile_image_url,
-      pontuacao_geral: user.pontuacao_geral  // Corrigido aqui
+      pontuacao_geral: user.pontuacao_geral,
     }));
 
     res.status(200).json(sanitizedUsers);
@@ -190,7 +190,6 @@ app.get("/users", verifyToken, async (req, res) => {
     res.status(500).json({ success: false, message: "Internal server error" });
   }
 });
-
 
 // 4 - SETAR FOTO DE PERFIL DO USER
 app.post("/upload", verifyToken, upload.single("image"), async (req, res) => {
@@ -373,44 +372,46 @@ app.get("/perguntas/:conteudo_id", async (req, res) => {
   }
 });
 
-
 // FUNÇÃO PARA CONQUISTAS:
 
 // Verifica a quantidade de conclusões do usuário
 
 const verificaConquistas = async (user_id) => {
-  const resultConclusoes = await pool.query("SELECT COUNT(*) as quantidade FROM conclusoes WHERE user_id = $1", [user_id]);
+  const resultConclusoes = await pool.query(
+    "SELECT COUNT(*) as quantidade FROM conclusoes WHERE user_id = $1",
+    [user_id]
+  );
   const quantidadeConclusoes = resultConclusoes.rows[0].quantidade;
-  
+
   if (quantidadeConclusoes > 0) {
     // Determina quais conquistas associar com base na quantidade de conclusões
     const conquistasParaAdicionar = [];
-  
+
     if (quantidadeConclusoes >= 10) {
       conquistasParaAdicionar.push(3); // ID da conquista "10 conteúdos concluídos"
     }
-  
+
     if (quantidadeConclusoes >= 5) {
       conquistasParaAdicionar.push(2); // ID da conquista "5 conteúdos concluídos"
     }
-  
+
     if (quantidadeConclusoes >= 1) {
       conquistasParaAdicionar.push(1); // ID da conquista "Primeiro conteúdo concluído"
     }
-  
+
     // Insere as conquistas na tabela usuarios_conquistas
     if (conquistasParaAdicionar.length > 0) {
-      const values = conquistasParaAdicionar.map(conquistaId => `(${user_id}, ${conquistaId})`).join(',');
+      const values = conquistasParaAdicionar
+        .map((conquistaId) => `(${user_id}, ${conquistaId})`)
+        .join(",");
       await pool.query(
         `INSERT INTO usuarios_conquistas (user_id, conquista_id) VALUES ${values} ON CONFLICT DO NOTHING`
       );
     }
   }
-}
-
+};
 
 // Restante do seu código para conceder pontos e conclusão
-
 
 // 10- ADICIONA RESPOSTA e ATUALIZA se cada pergunta respondida tá certo ou não
 app.post("/respostas", verifyToken, async (req, res) => {
@@ -421,55 +422,66 @@ app.post("/respostas", verifyToken, async (req, res) => {
     const conclusoes = {}; // Armazenar conclusões para evitar pontuações duplicadas
     let todasCorretas = true; // Flag para verificar se todas as respostas estão corretas
 
-    await Promise.all(respostas.map(async ({ pergunta_id, resposta_do_usuario }) => {
-      const perguntaResult = await pool.query("SELECT resposta_correta, conteudo_id FROM perguntas WHERE id = $1", [pergunta_id]);
-
-      if (perguntaResult.rows.length === 0) {
-        // Pergunta não encontrada, você pode lidar com isso se necessário
-      } else {
-        const { resposta_correta, conteudo_id } = perguntaResult.rows[0];
-        const acertou = resposta_do_usuario === resposta_correta;
-
-        todasCorretas = todasCorretas && acertou; // Atualiza a flag com o resultado da pergunta
-
-        await pool.query(
-          "INSERT INTO respostas (user_id, pergunta_id, resposta_do_usuario, resposta_correta) VALUES ($1, $2, $3, $4) ON CONFLICT (user_id, pergunta_id) DO UPDATE SET resposta_do_usuario = $3, resposta_correta = $4",
-          [user_id, pergunta_id, resposta_do_usuario, acertou]
+    await Promise.all(
+      respostas.map(async ({ pergunta_id, resposta_do_usuario }) => {
+        const perguntaResult = await pool.query(
+          "SELECT resposta_correta, conteudo_id FROM perguntas WHERE id = $1",
+          [pergunta_id]
         );
 
-        if (conteudo_id !== undefined && conteudo_id !== null && !conclusoes[conteudo_id]) {
-          conclusoes[conteudo_id] = true; // Marcamos como concluído para evitar pontuações duplicadas
+        if (perguntaResult.rows.length === 0) {
+          // Pergunta não encontrada, você pode lidar com isso se necessário
+        } else {
+          const { resposta_correta, conteudo_id } = perguntaResult.rows[0];
+          const acertou = resposta_do_usuario === resposta_correta;
+
+          todasCorretas = todasCorretas && acertou; // Atualiza a flag com o resultado da pergunta
+
+          await pool.query(
+            "INSERT INTO respostas (user_id, pergunta_id, resposta_do_usuario, resposta_correta) VALUES ($1, $2, $3, $4) ON CONFLICT (user_id, pergunta_id) DO UPDATE SET resposta_do_usuario = $3, resposta_correta = $4",
+            [user_id, pergunta_id, resposta_do_usuario, acertou]
+          );
+
+          if (
+            conteudo_id !== undefined &&
+            conteudo_id !== null &&
+            !conclusoes[conteudo_id]
+          ) {
+            conclusoes[conteudo_id] = true; // Marcamos como concluído para evitar pontuações duplicadas
+          }
         }
-      }
-    }));
+      })
+    );
 
     // Verifica se todas as respostas estão corretas antes de conceder pontos e conclusão
     if (todasCorretas) {
-      await Promise.all(Object.keys(conclusoes).map(async (conteudo_id) => {
-        // Atualiza a pontuação geral do usuário com os pontos do conteúdo, tratando null como 0
-        await pool.query(
-          "UPDATE users SET pontuacao_geral = pontuacao_geral + COALESCE((SELECT pontos FROM conteudos WHERE id = $1), 0) WHERE user_id = $2",
-          [conteudo_id, user_id]
-        );
+      await Promise.all(
+        Object.keys(conclusoes).map(async (conteudo_id) => {
+          // Atualiza a pontuação geral do usuário com os pontos do conteúdo, tratando null como 0
+          await pool.query(
+            "UPDATE users SET pontuacao_geral = pontuacao_geral + COALESCE((SELECT pontos FROM conteudos WHERE id = $1), 0) WHERE user_id = $2",
+            [conteudo_id, user_id]
+          );
 
-        // Insere a conclusão se não existir
-        await pool.query(
-          "INSERT INTO conclusoes (user_id, conteudo_id) VALUES ($1, $2) ON CONFLICT (user_id, conteudo_id) DO NOTHING",
-          [user_id, conteudo_id]
-        );
+          // Insere a conclusão se não existir
+          await pool.query(
+            "INSERT INTO conclusoes (user_id, conteudo_id) VALUES ($1, $2) ON CONFLICT (user_id, conteudo_id) DO NOTHING",
+            [user_id, conteudo_id]
+          );
 
-        verificaConquistas(user_id)
-
-      }));
+          verificaConquistas(user_id);
+        })
+      );
     }
 
     res.status(200).json({ success: true });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ success: false, message: "Erro interno do servidor" });
+    res
+      .status(500)
+      .json({ success: false, message: "Erro interno do servidor" });
   }
 });
-
 
 // 11- OBTÉM QUANTIDADE DE PERGUNTAS e QUANTIDADE DE ACERTO EM UM CONTEUDO
 app.get("/quantidade-acertos/:conteudo_id", verifyToken, async (req, res) => {
@@ -478,7 +490,8 @@ app.get("/quantidade-acertos/:conteudo_id", verifyToken, async (req, res) => {
 
   try {
     // Consultar a quantidade de respostas corretas para o usuário
-    const result = await pool.query(`
+    const result = await pool.query(
+      `
       SELECT 
         COALESCE(SUM(CASE WHEN respostas.resposta_do_usuario = perguntas.resposta_correta THEN 1 ELSE 0 END), 0) AS quantidade_acertos,
         COUNT(DISTINCT perguntas.id) AS quantidade_total_perguntas
@@ -487,16 +500,28 @@ app.get("/quantidade-acertos/:conteudo_id", verifyToken, async (req, res) => {
         AND respostas.user_id = $1
       WHERE conteudo_id = $2
       GROUP BY conteudo_id;
-    `, [user_id, conteudo_id]);
-  
-    const quantidadeAcertos = parseInt(result.rows[0]?.quantidade_acertos, 10) || 0;
-    const quantidadeTotalPerguntas = parseInt(result.rows[0]?.quantidade_total_perguntas, 10) || 0;
+    `,
+      [user_id, conteudo_id]
+    );
+
+    const quantidadeAcertos =
+      parseInt(result.rows[0]?.quantidade_acertos, 10) || 0;
+    const quantidadeTotalPerguntas =
+      parseInt(result.rows[0]?.quantidade_total_perguntas, 10) || 0;
 
     // Retornar a resposta do servidor com a quantidade de acertos e total de perguntas
-    res.status(200).json({ success: true, quantidade_acertos: quantidadeAcertos, quantidade_total_perguntas: quantidadeTotalPerguntas });
+    res
+      .status(200)
+      .json({
+        success: true,
+        quantidade_acertos: quantidadeAcertos,
+        quantidade_total_perguntas: quantidadeTotalPerguntas,
+      });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ success: false, message: "Erro interno do servidor" });
+    res
+      .status(500)
+      .json({ success: false, message: "Erro interno do servidor" });
   }
 });
 
@@ -552,24 +577,30 @@ app.get("/verificar-conclusao/:user_id/:conteudo_id", async (req, res) => {
   }
 });
 
-
 // 14- OBTÉM PONTUAÇÃO DE UM USUÁRIO
 app.get("/pontuacao-geral/:user_id", async (req, res) => {
   const { user_id } = req.params;
 
   try {
-    const result = await pool.query("SELECT pontuacao_geral FROM users WHERE user_id = $1", [user_id]);
+    const result = await pool.query(
+      "SELECT pontuacao_geral FROM users WHERE user_id = $1",
+      [user_id]
+    );
 
     if (result.rows.length === 0) {
       // Usuário não encontrado, você pode lidar com isso se necessário
-      res.status(404).json({ success: false, message: "Usuário não encontrado" });
+      res
+        .status(404)
+        .json({ success: false, message: "Usuário não encontrado" });
     } else {
       const pontuacao_geral = result.rows[0].pontuacao_geral;
       res.status(200).json({ success: true, pontuacao_geral });
     }
   } catch (error) {
     console.error(error);
-    res.status(500).json({ success: false, message: "Erro interno do servidor" });
+    res
+      .status(500)
+      .json({ success: false, message: "Erro interno do servidor" });
   }
 });
 
@@ -578,12 +609,17 @@ app.get("/quantidade-conteudos/:user_id", async (req, res) => {
   const { user_id } = req.params;
 
   try {
-    const result = await pool.query("SELECT COUNT(*) as quantidade FROM conclusoes WHERE user_id = $1", [user_id]);
+    const result = await pool.query(
+      "SELECT COUNT(*) as quantidade FROM conclusoes WHERE user_id = $1",
+      [user_id]
+    );
     const qtd_conteudos_completos = result.rows[0].quantidade;
     res.status(200).json({ success: true, qtd_conteudos_completos });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ success: false, message: "Erro interno do servidor" });
+    res
+      .status(500)
+      .json({ success: false, message: "Erro interno do servidor" });
   }
 });
 
@@ -592,51 +628,61 @@ app.get("/conteudos-concluidos/:user_id", async (req, res) => {
   const { user_id } = req.params;
 
   try {
-    const result = await pool.query("SELECT conteudo_id FROM conclusoes WHERE user_id = $1", [user_id]);
-    const conteudos_completos = result.rows.map(row => row.conteudo_id);
+    const result = await pool.query(
+      "SELECT conteudo_id FROM conclusoes WHERE user_id = $1",
+      [user_id]
+    );
+    const conteudos_completos = result.rows.map((row) => row.conteudo_id);
     res.status(200).json({ success: true, conteudos_completos });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ success: false, message: "Erro interno do servidor" });
+    res
+      .status(500)
+      .json({ success: false, message: "Erro interno do servidor" });
   }
 });
-
-
 
 // 17- CONQUISTAS
 app.get("/conquistas", async (req, res) => {
   try {
-    const result = await pool.query("SELECT nome_conquista, descricao FROM conquistas");
+    const result = await pool.query(
+      "SELECT nome_conquista, descricao FROM conquistas"
+    );
 
     // Map the result rows to an array of achievements
-    const conquistas = result.rows.map(row => ({
+    const conquistas = result.rows.map((row) => ({
       nome_conquista: row.nome_conquista,
-      descricao: row.descricao
+      descricao: row.descricao,
     }));
 
     res.status(200).json({ success: true, conquistas });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ success: false, message: "Erro interno do servidor" });
+    res
+      .status(500)
+      .json({ success: false, message: "Erro interno do servidor" });
   }
 });
-
 
 // 17- CONQUISTAS
 app.get("/conquistas", async (req, res) => {
   try {
-    const result = await pool.query("SELECT nome_conquista, descricao FROM conquistas");
+    const result = await pool.query(
+      "SELECT nome_conquista, descricao FROM conquistas"
+    );
 
     // Map the result rows to an array of achievements
-    const conquistas = result.rows.map(row => ({
+    const conquistas = result.rows.map((row) => ({
       nome_conquista: row.nome_conquista,
-      descricao: row.descricao
+      descricao: row.descricao,
     }));
 
     res.status(200).json({ success: true, conquistas });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ success: false, message: "Erro interno do servidor" });
+    res
+      .status(500)
+      .json({ success: false, message: "Erro interno do servidor" });
   }
 });
 
@@ -647,26 +693,26 @@ app.get("/conquistas-usuario/:user_id", async (req, res) => {
   try {
     const result = await pool.query(
       "SELECT c.nome_conquista, c.descricao " +
-      "FROM usuarios_conquistas uc " +
-      "JOIN conquistas c ON uc.conquista_id = c.id " +
-      "WHERE uc.user_id = $1",
+        "FROM usuarios_conquistas uc " +
+        "JOIN conquistas c ON uc.conquista_id = c.id " +
+        "WHERE uc.user_id = $1",
       [user_id]
     );
 
     // Mapeia as linhas de resultado para um array de conquistas do usuário
-    const conquistasUsuario = result.rows.map(row => ({
+    const conquistasUsuario = result.rows.map((row) => ({
       nome_conquista: row.nome_conquista,
-      descricao: row.descricao
+      descricao: row.descricao,
     }));
 
     res.status(200).json({ success: true, conquistasUsuario });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ success: false, message: "Erro interno do servidor" });
+    res
+      .status(500)
+      .json({ success: false, message: "Erro interno do servidor" });
   }
 });
-
-
 
 // // 13- VERIFICA CONTEUDO CONCLUIDO
 // app.get("/verificar-conclusao/:user_id", async (req, res) => {
@@ -707,23 +753,24 @@ const verificarRespostaCorreta = async (perguntaId, respostaUsuario) => {
   }
 };
 
-
 function determinarEstudoIndicado(respostas) {
-  const preferenciaEstudo = respostas.find((resposta) => resposta.pergunta_id === 2)?.resposta_do_usuario;
+  const preferenciaEstudo = respostas.find(
+    (resposta) => resposta.pergunta_id === 2
+  )?.resposta_do_usuario;
 
   if (preferenciaEstudo) {
     switch (preferenciaEstudo.toLowerCase()) {
-      case 'backend':
+      case "backend":
         return 1; // ID correspondente ao Backend
-      case 'frontend':
+      case "frontend":
         return 2; // ID correspondente ao Frontend
-      case 'database':
+      case "database":
         return 3; // ID correspondente ao Database
-      case 'devops e automação de infraestrutura':
+      case "devops e automação de infraestrutura":
         return 4; // ID correspondente ao DevOps e Automação de Infraestrutura
-      case 'mobile':
+      case "mobile":
         return 5; // ID correspondente ao Mobile
-      case 'ux e design':
+      case "ux e design":
         return 6; // ID correspondente ao UX e Design
       default:
         return 2; // Valor padrão para caso de preferência desconhecida
@@ -740,7 +787,12 @@ app.post("/questionnaire-responses", async (req, res) => {
   try {
     // Verificar se 'respostas' é um array com 3 elementos
     if (!Array.isArray(respostas) || respostas.length !== 3) {
-      return res.status(400).json({ success: false, message: "O array 'respostas' deve ter exatamente 3 elementos" });
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: "O array 'respostas' deve ter exatamente 3 elementos",
+        });
     }
 
     // Determinar o estudo indicado
@@ -748,14 +800,21 @@ app.post("/questionnaire-responses", async (req, res) => {
 
     // Verificar se o estudo indicado é válido
     if (estudoIndicadoId < 1 || estudoIndicadoId > 6) {
-      return res.status(400).json({ success: false, message: "ID de estudo indicado inválido" });
+      return res
+        .status(400)
+        .json({ success: false, message: "ID de estudo indicado inválido" });
     }
 
     // Consultar o banco de dados para obter o user_id com base no e-mail
-    const userResult = await pool.query("SELECT user_id FROM users WHERE email = $1", [email]);
+    const userResult = await pool.query(
+      "SELECT user_id FROM users WHERE email = $1",
+      [email]
+    );
 
     if (userResult.rows.length === 0) {
-      return res.status(404).json({ success: false, message: "Usuário não encontrado" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Usuário não encontrado" });
     }
 
     const user_id = userResult.rows[0].user_id;
@@ -770,23 +829,34 @@ app.post("/questionnaire-responses", async (req, res) => {
     await Promise.all(
       respostas.map(async (resposta) => {
         const { pergunta_id, resposta_do_usuario } = resposta;
-        const respostaBoolean = resposta_do_usuario.toLowerCase() === 'sim';
+        const respostaBoolean = resposta_do_usuario.toLowerCase() === "sim";
 
         await pool.query(
           "INSERT INTO questionnaire_responses (user_id, question1, question2, question3) VALUES ($1, $2, $3, $4)",
-          [user_id, ...(Array.from({ length: 3 }).map((_, i) => respostaBoolean && i + 1 === pergunta_id))]
+          [
+            user_id,
+            ...Array.from({ length: 3 }).map(
+              (_, i) => respostaBoolean && i + 1 === pergunta_id
+            ),
+          ]
         );
       })
     );
 
-    res.status(200).json({ success: true, message: "Respostas registradas com sucesso", updatedUser });
+    res
+      .status(200)
+      .json({
+        success: true,
+        message: "Respostas registradas com sucesso",
+        updatedUser,
+      });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ success: false, message: "Erro interno do servidor" });
+    res
+      .status(500)
+      .json({ success: false, message: "Erro interno do servidor" });
   }
 });
-
-
 
 // Adicione a rota para obter a preferencia_estudo
 app.get("/user-preference-study/:user_id", async (req, res) => {
@@ -794,19 +864,29 @@ app.get("/user-preference-study/:user_id", async (req, res) => {
 
   try {
     // Consulta a preferencia_estudo na tabela users
-    const userResult = await pool.query("SELECT preferencia_estudo FROM users WHERE user_id = $1", [user_id]);
+    const userResult = await pool.query(
+      "SELECT preferencia_estudo FROM users WHERE user_id = $1",
+      [user_id]
+    );
 
     if (userResult.rows.length === 0) {
-      return res.status(404).json({ success: false, message: "Usuário não encontrado" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Usuário não encontrado" });
     }
 
     const preferenciaEstudoId = userResult.rows[0].preferencia_estudo;
 
     // Consulta os dados correspondentes na tabela estudos
-    const estudoResult = await pool.query("SELECT * FROM estudos WHERE id = $1", [preferenciaEstudoId]);
+    const estudoResult = await pool.query(
+      "SELECT * FROM estudos WHERE id = $1",
+      [preferenciaEstudoId]
+    );
 
     if (estudoResult.rows.length === 0) {
-      return res.status(404).json({ success: false, message: "Estudo não encontrado" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Estudo não encontrado" });
     }
 
     const preferenciaEstudo = estudoResult.rows[0];
@@ -814,10 +894,11 @@ app.get("/user-preference-study/:user_id", async (req, res) => {
     res.status(200).json({ success: true, preferenciaEstudo });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ success: false, message: "Erro interno do servidor" });
+    res
+      .status(500)
+      .json({ success: false, message: "Erro interno do servidor" });
   }
 });
-
 
 // Rota para verificar se a preferência_estudo está preenchida
 app.get("/preferencia-estudo/:user_id", async (req, res) => {
@@ -825,10 +906,15 @@ app.get("/preferencia-estudo/:user_id", async (req, res) => {
 
   try {
     // Consulta a preferencia_estudo na tabela users
-    const userResult = await pool.query("SELECT preferencia_estudo FROM users WHERE user_id = $1", [user_id]);
+    const userResult = await pool.query(
+      "SELECT preferencia_estudo FROM users WHERE user_id = $1",
+      [user_id]
+    );
 
     if (userResult.rows.length === 0) {
-      return res.status(404).json({ success: false, message: "Usuário não encontrado" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Usuário não encontrado" });
     }
 
     const preferenciaEstudoId = userResult.rows[0].preferencia_estudo;
@@ -839,11 +925,11 @@ app.get("/preferencia-estudo/:user_id", async (req, res) => {
     res.status(200).json({ success: true, preferenciaEstudoPreenchida });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ success: false, message: "Erro interno do servidor" });
+    res
+      .status(500)
+      .json({ success: false, message: "Erro interno do servidor" });
   }
 });
-
-
 
 // MATERIAIS
 app.get("/materiais/:conteudo_id", async (req, res) => {

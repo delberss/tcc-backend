@@ -2,7 +2,7 @@ const { Pool } = require("pg");
 
 const pool = new Pool({
     user: "postgres",
-    password: "1234",
+    password: "senha",
     host: "localhost",
     port: 5432,
     database: "sistema_gamificado"
@@ -31,6 +31,18 @@ const pool = new Pool({
 //     descricao VARCHAR(255)
 // );
 
+// INSERT INTO conquistas (nome_conquista, descricao) VALUES
+//     ('Primeiro conteúdo concluído', 'Descrição inventada para o primeiro conteúdo concluído.'),
+//     ('5 conteúdos concluídos', 'Descrição inventada para a conclusão de 5 conteúdos.'),
+//     ('10 conteúdos concluídos', 'Descrição inventada para a conclusão de 10 conteúdos.'),
+//     ('Estudo Backend', 'Descrição inventada para o estudo de Backend.'),
+//     ('Estudo Frontend', 'Descrição inventada para o estudo de Frontend.'),
+//     ('Estudo Database', 'Descrição inventada para o estudo de Database.'),
+//     ('Estudo Devops', 'Descrição inventada para o estudo de Devops.'),
+//     ('Estudo Mobile', 'Descrição inventada para o estudo de Mobile.'),
+//     ('Estudo UX e Design', 'Descrição inventada para o estudo de UX e Design.');
+
+
 
 // 3 - TABELA usuarios_conquistas 
 // CREATE TABLE usuarios_conquistas (
@@ -40,7 +52,7 @@ const pool = new Pool({
 // );
 
 
-//==================== 4 - TABELA estudos =============================
+// ==================== 4 - TABELA estudos =============================
 // CREATE TABLE estudos (
 //     id SERIAL PRIMARY KEY,
 //     nome VARCHAR(255) NOT NULL
@@ -54,9 +66,9 @@ const pool = new Pool({
 //     ('Devops E Automação De Infraestrutura'),
 //     ('Mobile'),
 //     ('UX e Design');
-//====================================================================
+// ====================================================================
 
-//=======================5 - TABELA conteudos=========================
+// =======================5 - TABELA conteudos=========================
 // CREATE TABLE conteudos (
 //     id SERIAL PRIMARY KEY,
 //     titulo VARCHAR(255) NOT NULL,
@@ -91,7 +103,7 @@ const pool = new Pool({
 //     ('Arquitetura de Microservices', 'Princípios e práticas de arquitetura de microservices.', 1, 800);
 
     
-//====================================================================
+// ====================================================================
 
 
 // 6 - TABELA conclusoes
@@ -102,7 +114,7 @@ const pool = new Pool({
 // );
 
 
-//=======================7 - TABELA perguntas=========================
+// =======================7 - TABELA perguntas=========================
 // CREATE TABLE perguntas (
 //     id SERIAL PRIMARY KEY,
 //     pergunta TEXT,
@@ -125,7 +137,7 @@ const pool = new Pool({
 
 // INSERT INTO perguntas (pergunta, conteudo_id, opcao_a, opcao_b, opcao_c, opcao_d, resposta_correta) VALUES
 //     ('Qual método é usado para ler dados de um formulário em uma aplicação Express.js?', 1, 'GET', 'POST', 'PUT', 'DELETE', 'B');
-//====================================================================
+// ====================================================================
 
 
 // 8 - TABELA questionnaire_responses
