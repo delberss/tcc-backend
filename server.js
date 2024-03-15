@@ -111,7 +111,6 @@ app.post("/login", async (req, res) => {
 
 // 2 - REGISTRAR USER
 app.post("/register", async (req, res) => {
-  console.log('register')
   const { name, email, password } = req.body;
 
   try {
@@ -757,29 +756,53 @@ const verificarRespostaCorreta = async (perguntaId, respostaUsuario) => {
 function determinarEstudoIndicado(respostas) {
   const preferenciaEstudo = respostas.find(
     (resposta) => resposta.pergunta_id === 2
-  )?.resposta_do_usuario;
+  );
 
-  if (preferenciaEstudo) {
-    switch (preferenciaEstudo.toLowerCase()) {
+  if (preferenciaEstudo && preferenciaEstudo.resposta_do_usuario.toLowerCase() !== "n/a") {
+    switch (preferenciaEstudo.resposta_do_usuario.toLowerCase()) {
       case "backend":
-        return 1; // ID correspondente ao Backend
+        return 1; 
       case "frontend":
-        return 2; // ID correspondente ao Frontend
+        return 2;
       case "database":
-        return 3; // ID correspondente ao Database
+        return 3;
       case "devops e automação de infraestrutura":
-        return 4; // ID correspondente ao DevOps e Automação de Infraestrutura
+        return 4;
       case "mobile":
-        return 5; // ID correspondente ao Mobile
+        return 5;
       case "ux e design":
-        return 6; // ID correspondente ao UX e Design
+        return 6;
       default:
-        return 2; // Valor padrão para caso de preferência desconhecida
+        return 2;
+    }
+  }
+
+  const experienciaEstudo = respostas.find(
+    (resposta) => resposta.pergunta_id === 1 && resposta.resposta_do_usuario.toLowerCase() !== "n/a"
+  );
+
+  if (experienciaEstudo) {
+    switch (experienciaEstudo.resposta_do_usuario.toLowerCase()) {
+      case "backend":
+        return 1; 
+      case "frontend":
+        return 2;
+      case "database":
+        return 3;
+      case "devops e automação de infraestrutura":
+        return 4;
+      case "mobile":
+        return 5;
+      case "ux e design":
+        return 6;
+      default:
+        return 2; 
     }
   }
 
   return 2;
 }
+
 
 app.post("/questionnaire-responses", async (req, res) => {
   const { respostas, userData } = req.body;
