@@ -57,7 +57,8 @@ const verifyToken = (req, res, next) => {
 
 // 1 - FAZER LOGIN
 app.post("/login", async (req, res) => {
-  const { email, password } = req.body;
+  let { email, password } = req.body;
+  email = email.toLowerCase();
 
   try {
     const result = await pool.query(
