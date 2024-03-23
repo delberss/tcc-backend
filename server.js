@@ -57,17 +57,26 @@ const verifyToken = (req, res, next) => {
 
 // 1 - FAZER LOGIN
 app.post("/login", async (req, res) => {
-  let { email, password } = req.body;
+  let { email, password, userType } = req.body;
+  userType = userType.toLowerCase();
   email = email.toLowerCase();
 
   try {
     const result = await pool.query(
-      "SELECT user_id, name, email, password, profile_image_url, pontuacao_geral, preferencia_estudo FROM users WHERE email = $1",
+      "SELECT user_id, name, email, password, profile_image_url, pontuacao_geral, preferencia_estudo, tipo_usuario FROM users WHERE email = $1",
       [email]
     );
 
     if (result.rows.length > 0) {
       const user = result.rows[0];
+
+
+      if (user.tipo_usuario.toLowerCase() != userType) {
+        return res.status(401).json({
+          success: false,
+          message: "Email não existe para esse login",
+        });
+      }
 
       const passwordMatch = await bcrypt.compare(password, user.password);
 
@@ -84,6 +93,7 @@ app.post("/login", async (req, res) => {
             profileImageUrl: user.profile_image_url,
             preferenciaEstudo: user.preferencia_estudo,
             pontuacaoGeral: user.pontuacao_geral,
+            tipo_usuario: user.tipo_usuario,
           },
           token: token,
         });
@@ -146,8 +156,8 @@ app.post("/register", async (req, res) => {
       await client.query("BEGIN");
 
       const insertSTMT =
-        "INSERT INTO users (name, email, password, pontuacao_geral) VALUES ($1, $2, $3, $4)";
-      const values = [formattedName, email.toLowerCase(), hashedPassword, 0];
+        "INSERT INTO users (name, email, password, pontuacao_geral, tipo_usuario) VALUES ($1, $2, $3, $4, $5)";
+      const values = [formattedName, email.toLowerCase(), hashedPassword, 0, 'estudante']; // Definindo 'estudante' como tipo padrão
 
       await client.query(insertSTMT, values);
 
@@ -170,11 +180,12 @@ app.post("/register", async (req, res) => {
   }
 });
 
+
 // 3 - USERS DO SISTEMA
 app.get("/users", verifyToken, async (req, res) => {
   try {
     const result = await pool.query(
-      "SELECT user_id, name, email, profile_image_url, pontuacao_geral FROM users"
+      "SELECT user_id, name, email, profile_image_url, pontuacao_geral, tipo_usuario FROM users"
     );
     const users = result.rows;
 
@@ -183,6 +194,7 @@ app.get("/users", verifyToken, async (req, res) => {
       email: user.email,
       profile_image_url: user.profile_image_url,
       pontuacao_geral: user.pontuacao_geral,
+      tipo_usuario: user.tipo_usuario,
     }));
 
     res.status(200).json(sanitizedUsers);
@@ -227,10 +239,24 @@ app.post("/upload", verifyToken, upload.single("image"), async (req, res) => {
 // 5 - ESTUDOS DO SISTEMA
 app.get("/estudos", async (req, res) => {
   try {
-    const result = await pool.query("SELECT * FROM estudos");
+    const result = await pool.query("SELECT * FROM estudos ORDER BY id");
     const estudos = result.rows;
 
     res.status(200).json(estudos);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: "Internal server error" });
+  }
+});
+
+
+app.get("/estudos/:nome", async (req, res) => {
+  const { nome } = req.params;
+  try {
+    const result = await pool.query("SELECT descricao, link  FROM estudos WHERE UPPER(nome) = $1 ", [nome.toUpperCase()]);
+    const resultado = result.rows;
+
+    res.status(200).json(resultado);
   } catch (error) {
     console.error(error);
     res.status(500).json({ success: false, message: "Internal server error" });
@@ -307,12 +333,9 @@ app.post("/add/pergunta", verifyToken, async (req, res) => {
     resposta_correta,
   } = req.body;
 
-  try {
-    // Verificar se o usuário tem permissão para adicionar perguntas
-    // (pode ser baseado em algum critério específico, por exemplo, um nível de permissão)
-    // Aqui, estou assumindo que todos os usuários podem adicionar perguntas.
 
-    // Verificar se o conteúdo_id pertence ao usuário (é uma proteção adicional)
+  try {
+
     const conteudoResult = await pool.query(
       "SELECT estudo_id FROM conteudos WHERE id = $1",
       [conteudo_id]
@@ -434,7 +457,7 @@ app.post("/respostas", verifyToken, async (req, res) => {
           // Pergunta não encontrada, você pode lidar com isso se necessário
         } else {
           const { resposta_correta, conteudo_id } = perguntaResult.rows[0];
-          const acertou = resposta_do_usuario === resposta_correta;
+          const acertou = resposta_do_usuario.toUpperCase() === resposta_correta.toUpperCase();
 
           todasCorretas = todasCorretas && acertou; // Atualiza a flag com o resultado da pergunta
 
@@ -833,7 +856,7 @@ app.post("/questionnaire-responses", async (req, res) => {
     // Consultar o banco de dados para obter o user_id com base no e-mail
     const userResult = await pool.query(
       "SELECT user_id FROM users WHERE email = $1",
-      [email]
+      [email.toLowerCase()]
     );
 
     if (userResult.rows.length === 0) {
@@ -977,10 +1000,67 @@ app.get("/materiais/:conteudo_id", async (req, res) => {
   }
 });
 
+
+app.post("/adicionarEstudo", async (req, res) => {
+  const { nome, descricao, link } = req.body;
+
+  try {
+    if (!nome) {
+      return res.status(400).json({ success: false, message: "Nome do estudo é obrigatório" });
+    }
+
+    const existingEstudo = await pool.query("SELECT * FROM estudos WHERE LOWER(nome) = LOWER($1)", [nome]);
+
+    // Se o estudo já existir, retorne um erro
+    if (existingEstudo.rows.length > 0) {
+      return res.status(400).json({ success: false, message: "Este nome de estudo já existe" });
+    }
+
+    // Insira o novo estudo na tabela estudos
+    const result = await pool.query("INSERT INTO estudos (nome, descricao, link) VALUES ($1, $2, $3) RETURNING *", [nome, descricao, link]);
+
+    // Envie a resposta com os dados do novo estudo inserido
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    console.error('Erro ao inserir novo estudo:', error);
+    res.status(500).json({ success: false, message: "Internal server error" });
+  }
+});
+
+
+// Endpoint para adicionar novo conteúdo
+app.post("/adicionarConteudo", async (req, res) => {
+  const { titulo, descricao, estudo_id, pontos, materiais } = req.body;
+
+  try {
+    if (!titulo || !estudo_id) {
+      return res.status(400).json({ success: false, message: "Título e ID do estudo são obrigatórios" });
+    }
+
+    // Verifique se o estudo associado ao conteúdo existe
+    const existingEstudo = await pool.query("SELECT * FROM estudos WHERE id = $1", [estudo_id]);
+    if (existingEstudo.rows.length === 0) {
+      return res.status(400).json({ success: false, message: "O estudo associado não existe" });
+    }
+
+    // Insira o novo conteúdo na tabela conteudos
+    const result = await pool.query("INSERT INTO conteudos (titulo, descricao, estudo_id, pontos, materiais) VALUES ($1, $2, $3, $4, $5) RETURNING *",
+      [titulo, descricao, estudo_id, pontos, materiais]);
+
+    // Envie a resposta com os dados do novo conteúdo inserido
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    console.error('Erro ao inserir novo conteúdo:', error);
+    res.status(500).json({ success: false, message: "Internal server error" });
+  }
+});
+
+
+
 // EXTRA PARA UPLOADS DE IMAGENS
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
-const PORT = process.env.PORT || 49285;
+const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });

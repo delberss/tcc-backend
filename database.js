@@ -8,6 +8,14 @@ const pool = new Pool({
     database: "railway"
 });
 
+// const pool = new Pool({
+//     user: "postgres",
+//     password: "senha",
+//     host: "localhost",
+//     port: 5432,
+//     database: "sistema_gamificado"
+// });
+
 
 // const createTableQuery = `CREATE TABLE users (...
 // const insertEstudoQuery = `INSERT ...
@@ -20,8 +28,13 @@ const pool = new Pool({
 //     password VARCHAR(255) NOT NULL,
 //     profile_image_url VARCHAR(255),
 //     pontuacao_geral INTEGER,
-//     preferencia_estudo INTEGER
+//     preferencia_estudo INTEGER,
+//     tipo_usuario VARCHAR(10) NOT NULL DEFAULT 'estudante'
 // );
+
+// INSERT INTO users (name, email, password, pontuacao_geral, tipo_usuario)
+// VALUES ('Admin', 'admin@example.com', crypt('senha', gen_salt('bf')), 0, 'admin');
+
 
 
 // 2 - TABELA conquistas
@@ -57,6 +70,15 @@ const pool = new Pool({
 //     id SERIAL PRIMARY KEY,
 //     nome VARCHAR(255) NOT NULL
 // );
+
+// ======== NOVO ==========
+// CREATE TABLE estudos (
+//     id SERIAL PRIMARY KEY,
+//     nome VARCHAR(255) NOT NULL,
+//     descricao TEXT,
+//     link VARCHAR(255)
+// );
+
 
 
 // INSERT INTO estudos (nome) VALUES
