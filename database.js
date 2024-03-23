@@ -2,9 +2,9 @@ const { Pool } = require("pg");
 
 const pool = new Pool({
     user: "postgres",
-    password: "hIECMvGpYQZnkxNVrrcPcKhdeAQgmVPe",
-    host: "viaduct.proxy.rlwy.net",
-    port: 49285,
+    password: "arpQbgxJuEORhwttcytyLRdAKHCpozSe",
+    host: "roundhouse.proxy.rlwy.net",
+    port: 42366,
     database: "railway"
 });
 
@@ -31,6 +31,8 @@ const pool = new Pool({
 //     preferencia_estudo INTEGER,
 //     tipo_usuario VARCHAR(10) NOT NULL DEFAULT 'estudante'
 // );
+
+// CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 // INSERT INTO users (name, email, password, pontuacao_geral, tipo_usuario)
 // VALUES ('Admin', 'admin@example.com', crypt('senha', gen_salt('bf')), 0, 'admin');
