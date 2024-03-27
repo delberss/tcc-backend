@@ -4,8 +4,8 @@ const pool = new Pool({
     user: "postgres",
     password: "ebNIYVZBEKNMnThsXIefzxzvABEPKpNJ",
     host: "monorail.proxy.rlwy.net",
-    port: 42366,
-    database: "38589"
+    port: 38589,
+    database: "railway"
 });
 
 // const pool = new Pool({
