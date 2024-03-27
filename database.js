@@ -2,9 +2,9 @@ const { Pool } = require("pg");
 
 const pool = new Pool({
     user: "postgres",
-    password: "ebNIYVZBEKNMnThsXIefzxzvABEPKpNJ",
+    password: "qOMbZKJbvRtKMfnOWFJWVVPZBXtNeiDz",
     host: "monorail.proxy.rlwy.net",
-    port: 38589,
+    port: 12524,
     database: "railway"
 });
 
@@ -79,13 +79,14 @@ const pool = new Pool({
 
 
 
-// INSERT INTO estudos (nome) VALUES
-//     ('Backend'),
-//     ('Frontend'),
-//     ('Database'),
-//     ('Devops E Automação De Infraestrutura'),
-//     ('Mobile'),
-//     ('UX e Design');
+// INSERT INTO estudos (nome, descricao, link) VALUES
+//     ('Backend', 'Estudo sobre o desenvolvimento de servidores, APIs e lógica de aplicativos.', 'https://roadmap.sh/backend'),
+//     ('Frontend', 'Estudo sobre o desenvolvimento da interface do usuário em aplicações web.', 'https://roadmap.sh/frontend'),
+//     ('Database', 'Estudo sobre modelagem, otimização e administração de bancos de dados.', 'https://roadmap.sh/postgresql-dba'),
+//     ('Devops E Automação De Infraestrutura', 'Estudo sobre práticas DevOps, automação de infraestrutura e integração contínua/desenvolvimento contínuo (CI/CD).', 'https://roadmap.sh/devops'),
+//     ('Mobile', 'Estudo sobre desenvolvimento de aplicativos móveis para dispositivos iOS e Android.', 'https://roadmap.sh/android'),
+//     ('UX e Design', 'Estudo sobre design de experiência do usuário (UX), interfaces de usuário (UI) e princípios de design.', 'https://roadmap.sh/ux-design');
+
 // ====================================================================
 
 // =======================5 - TABELA conteudos=========================
