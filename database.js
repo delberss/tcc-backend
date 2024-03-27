@@ -2,10 +2,10 @@ const { Pool } = require("pg");
 
 const pool = new Pool({
     user: "postgres",
-    password: "arpQbgxJuEORhwttcytyLRdAKHCpozSe",
-    host: "roundhouse.proxy.rlwy.net",
+    password: "ebNIYVZBEKNMnThsXIefzxzvABEPKpNJ",
+    host: "monorail.proxy.rlwy.net",
     port: 42366,
-    database: "railway"
+    database: "38589"
 });
 
 // const pool = new Pool({
@@ -35,7 +35,7 @@ const pool = new Pool({
 // CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 // INSERT INTO users (name, email, password, pontuacao_geral, tipo_usuario)
-// VALUES ('Admin', 'admin@example.com', crypt('senha', gen_salt('bf')), 0, 'admin');
+// VALUES ('Admin', 'admin@admin', crypt('admin', gen_salt('bf')), 0, 'admin');
 
 
 
@@ -47,15 +47,15 @@ const pool = new Pool({
 // );
 
 // INSERT INTO conquistas (nome_conquista, descricao) VALUES
-//     ('Primeiro conteúdo concluído', 'Descrição inventada para o primeiro conteúdo concluído.'),
-//     ('5 conteúdos concluídos', 'Descrição inventada para a conclusão de 5 conteúdos.'),
-//     ('10 conteúdos concluídos', 'Descrição inventada para a conclusão de 10 conteúdos.'),
-//     ('Estudo Backend', 'Descrição inventada para o estudo de Backend.'),
-//     ('Estudo Frontend', 'Descrição inventada para o estudo de Frontend.'),
-//     ('Estudo Database', 'Descrição inventada para o estudo de Database.'),
-//     ('Estudo Devops', 'Descrição inventada para o estudo de Devops.'),
-//     ('Estudo Mobile', 'Descrição inventada para o estudo de Mobile.'),
-//     ('Estudo UX e Design', 'Descrição inventada para o estudo de UX e Design.');
+//     ('Primeiro conteúdo concluído', 'Parabéns! Primeiro conteúdo concluído.'),
+//     ('5 conteúdos concluídos', 'Parabéns! Você chegou a conclusão de 5 conteúdos.'),
+//     ('10 conteúdos concluídos', 'Parabéns! Você chegou a conclusão de 10 conteúdos.'),
+//     ('Estudo Backend', 'Incrível! Você completou o estudo de Backend.'),
+//     ('Estudo Frontend', 'Incrível! Você completou o estudo de Frontend.'),
+//     ('Estudo Database', 'Incrível! Você completou o estudo de Database.'),
+//     ('Estudo Devops', 'Incrível! Você completou o estudo de Devops.'),
+//     ('Estudo Mobile', 'Incrível! Você completou o estudo de Mobile.'),
+//     ('Estudo UX e Design', 'Incrível! Você completou o estudo de UX e Design.');
 
 
 
@@ -68,10 +68,6 @@ const pool = new Pool({
 
 
 // ==================== 4 - TABELA estudos =============================
-// CREATE TABLE estudos (
-//     id SERIAL PRIMARY KEY,
-//     nome VARCHAR(255) NOT NULL
-// );
 
 // ======== NOVO ==========
 // CREATE TABLE estudos (
