@@ -5,8 +5,9 @@ const pool = require("./database");
 const jwt = require("jsonwebtoken");
 const multer = require("multer");
 const path = require("path");
-
+const sinon = require("sinon"); // Importe a biblioteca sinon
 const app = express();
+const { format } = require('date-fns');
 
 app.use(express.json());
 app.use(cors());
@@ -23,6 +24,19 @@ const storage = multer.diskStorage({
 });
 
 const upload = multer({ storage: storage });
+
+
+function getDataLocal() {
+  const dataAtual = new Date();
+  const fusoHorario = 'America/Sao_Paulo'; // Fuso horário para São Paulo
+  const offset = new Date().getTimezoneOffset(); // Obtém o offset em minutos
+
+  const offsetMillisegundos = offset * 60 * 1000;
+  const dataLocal = new Date(dataAtual.getTime() - offsetMillisegundos);
+
+  return dataLocal;
+}
+
 
 // Gera token JWT
 const generateJWT = (userId) => {
@@ -55,21 +69,84 @@ const verifyToken = (req, res, next) => {
   }
 };
 
+//const mockDate = new Date("2024-04-15");
+async function updateLoginHistoryAndScore(userId) {
+  const dataDeHoje = getDataLocal().toISOString().split("T")[0];
+  const dataOntem = new Date(dataDeHoje);
+  dataOntem.setDate(dataOntem.getDate() - 1);
+
+  // Verifica último login
+  const pegaUltimoLogin = await pool.query(
+    "SELECT login_date, dias_seguidos FROM login_history WHERE user_id = $1",
+    [userId]
+  );
+
+  let qtdDiasSeguidos = pegaUltimoLogin.rows[0]?.dias_seguidos || 0;
+
+  if (pegaUltimoLogin.rows.length != 0) {
+    const ultimoLoginFormatado = pegaUltimoLogin.rows[0]?.login_date.toISOString()?.split('T')[0];
+    const diasSeguidos = pegaUltimoLogin.rows[0].dias_seguidos;
+
+    const ultimoAcessoOntem = (ultimoLoginFormatado === dataOntem.toISOString().split('T')[0]);
+
+    if (ultimoAcessoOntem) {
+      qtdDiasSeguidos++;
+      await pool.query(
+        "UPDATE login_history SET login_date = $1, dias_seguidos = $2 WHERE user_id = $3",
+        [dataDeHoje, diasSeguidos + 1, userId]
+      );
+    } else {
+      if(ultimoLoginFormatado !== dataDeHoje){
+        qtdDiasSeguidos = 1;
+        await pool.query(
+          "UPDATE login_history SET login_date = $1, dias_seguidos = $2 WHERE user_id = $3",
+          [dataDeHoje, 1, userId]
+        );
+      }
+    }
+  } else {
+    qtdDiasSeguidos = 1;
+    await pool.query(
+      "INSERT INTO login_history (user_id, login_date, dias_seguidos) VALUES ($1, $2, $3)",
+      [userId, dataDeHoje, 1]
+    );
+  }
+
+  // Atualizar pontuação geral do usuário com base nos dias seguidos
+  if (qtdDiasSeguidos === 3) {
+    await pool.query(
+      "UPDATE users SET pontuacao_geral = pontuacao_geral + 300 WHERE user_id = $1",
+      [userId]
+    );
+  } else if (qtdDiasSeguidos === 6) {
+    await pool.query(
+      "UPDATE users SET pontuacao_geral = pontuacao_geral + 600 WHERE user_id = $1",
+      [userId]
+    );
+  } else if (qtdDiasSeguidos === 10) {
+    await pool.query(
+      "UPDATE users SET pontuacao_geral = pontuacao_geral + 1000 WHERE user_id = $1",
+      [userId]
+    );
+  }
+}
+
+
 // 1 - FAZER LOGIN
 app.post("/login", async (req, res) => {
   let { email, password, userType } = req.body;
   userType = userType.toLowerCase();
   email = email.toLowerCase();
 
+
   try {
     const result = await pool.query(
-      "SELECT user_id, name, email, password, profile_image_url, pontuacao_geral, preferencia_estudo, tipo_usuario FROM users WHERE email = $1",
+      "SELECT user_id, name, email, password, profile_image_url, pontuacao_geral, preferencias_estudo, tipo_usuario FROM users WHERE email = $1",
       [email]
     );
 
     if (result.rows.length > 0) {
       const user = result.rows[0];
-
 
       if (user.tipo_usuario.toLowerCase() != userType) {
         return res.status(401).json({
@@ -83,6 +160,9 @@ app.post("/login", async (req, res) => {
       if (passwordMatch) {
         const token = generateJWT(user.user_id);
 
+        // Verificar e atualizar o número de dias seguidos e a pontuação geral
+        await updateLoginHistoryAndScore(user.user_id);
+
         res.status(200).json({
           success: true,
           message: "Login efetuado com sucesso",
@@ -91,7 +171,7 @@ app.post("/login", async (req, res) => {
             name: user.name,
             email: user.email,
             profileImageUrl: user.profile_image_url,
-            preferenciaEstudo: user.preferencia_estudo,
+            preferenciaEstudo: user.preferencias_estudo,
             pontuacaoGeral: user.pontuacao_geral,
             tipo_usuario: user.tipo_usuario,
           },
@@ -157,7 +237,13 @@ app.post("/register", async (req, res) => {
 
       const insertSTMT =
         "INSERT INTO users (name, email, password, pontuacao_geral, tipo_usuario) VALUES ($1, $2, $3, $4, $5)";
-      const values = [formattedName, email.toLowerCase(), hashedPassword, 0, 'estudante']; // Definindo 'estudante' como tipo padrão
+      const values = [
+        formattedName,
+        email.toLowerCase(),
+        hashedPassword,
+        0,
+        "estudante",
+      ]; // Definindo 'estudante' como tipo padrão
 
       await client.query(insertSTMT, values);
 
@@ -179,7 +265,6 @@ app.post("/register", async (req, res) => {
     res.status(500).json({ success: false, message: "Internal server error" });
   }
 });
-
 
 // 3 - USERS DO SISTEMA
 app.get("/users", verifyToken, async (req, res) => {
@@ -249,11 +334,13 @@ app.get("/estudos", async (req, res) => {
   }
 });
 
-
 app.get("/estudos/:nome", async (req, res) => {
   const { nome } = req.params;
   try {
-    const result = await pool.query("SELECT descricao, link  FROM estudos WHERE UPPER(nome) = $1 ", [nome.toUpperCase()]);
+    const result = await pool.query(
+      "SELECT descricao, link  FROM estudos WHERE UPPER(nome) = $1 ",
+      [nome.toUpperCase()]
+    );
     const resultado = result.rows;
 
     res.status(200).json(resultado);
@@ -333,9 +420,7 @@ app.post("/add/pergunta", verifyToken, async (req, res) => {
     resposta_correta,
   } = req.body;
 
-
   try {
-
     const conteudoResult = await pool.query(
       "SELECT estudo_id FROM conteudos WHERE id = $1",
       [conteudo_id]
@@ -457,7 +542,9 @@ app.post("/respostas", verifyToken, async (req, res) => {
           // Pergunta não encontrada, você pode lidar com isso se necessário
         } else {
           const { resposta_correta, conteudo_id } = perguntaResult.rows[0];
-          const acertou = resposta_do_usuario.toUpperCase() === resposta_correta.toUpperCase();
+          const acertou =
+            resposta_do_usuario.toUpperCase() ===
+            resposta_correta.toUpperCase();
 
           todasCorretas = todasCorretas && acertou; // Atualiza a flag com o resultado da pergunta
 
@@ -534,13 +621,11 @@ app.get("/quantidade-acertos/:conteudo_id", verifyToken, async (req, res) => {
       parseInt(result.rows[0]?.quantidade_total_perguntas, 10) || 0;
 
     // Retornar a resposta do servidor com a quantidade de acertos e total de perguntas
-    res
-      .status(200)
-      .json({
-        success: true,
-        quantidade_acertos: quantidadeAcertos,
-        quantidade_total_perguntas: quantidadeTotalPerguntas,
-      });
+    res.status(200).json({
+      success: true,
+      quantidade_acertos: quantidadeAcertos,
+      quantidade_total_perguntas: quantidadeTotalPerguntas,
+    });
   } catch (error) {
     console.error(error);
     res
@@ -777,55 +862,80 @@ const verificarRespostaCorreta = async (perguntaId, respostaUsuario) => {
   }
 };
 
+
+
 function determinarEstudoIndicado(respostas) {
+  // Verifica se a resposta da pergunta 2 (preferência) contém 'javascript'
   const preferenciaEstudo = respostas.find(
     (resposta) => resposta.pergunta_id === 2
   );
 
-  if (preferenciaEstudo && preferenciaEstudo.resposta_do_usuario.toLowerCase() !== "n/a") {
-    switch (preferenciaEstudo.resposta_do_usuario.toLowerCase()) {
-      case "backend":
-        return 1; 
-      case "frontend":
-        return 2;
-      case "database":
-        return 3;
-      case "devops e automação de infraestrutura":
-        return 4;
-      case "mobile":
-        return 5;
-      case "ux e design":
-        return 6;
-      default:
-        return 2;
+  if (
+    preferenciaEstudo &&
+    Array.isArray(preferenciaEstudo.resposta_do_usuario) &&
+    preferenciaEstudo.resposta_do_usuario.length > 0
+  ) {
+    const respostaLowerCase = preferenciaEstudo.resposta_do_usuario.map(option => option.toLowerCase());
+
+    // Verifica se a resposta inclui 'javascript'
+    if (respostaLowerCase.includes("javascript")) {
+      // Verifica se a resposta inclui outras linguagens backend
+      if (["python", "java", "c#", "ruby", "php", "c++"].some(option => respostaLowerCase.includes(option))) {
+        // Retorna o ID do estudo de frontend e backend
+        return "1,2"; // IDs do estudo de backend e frontend
+      } else {
+        // Retorna apenas o ID do estudo de frontend
+        return "2"; // ID do estudo de frontend
+      }
+    } else if (["python", "java", "c#", "ruby", "php", "c++"].some(option => respostaLowerCase.includes(option))) {
+      // Retorna apenas o ID do estudo de backend
+      return "1"; // ID do estudo de backend
+    } else if (respostaLowerCase.includes("swift")) {
+      // Retorna o ID do estudo de mobile
+      return "5"; // ID do estudo de mobile
     }
   }
 
+  // Fallback para a pergunta 1 se a pergunta 2 não fornecer uma resposta válida
   const experienciaEstudo = respostas.find(
-    (resposta) => resposta.pergunta_id === 1 && resposta.resposta_do_usuario.toLowerCase() !== "n/a"
+    (resposta) =>
+      resposta.pergunta_id === 1 &&
+      resposta.resposta_do_usuario !== "N/A"
   );
 
   if (experienciaEstudo) {
     switch (experienciaEstudo.resposta_do_usuario.toLowerCase()) {
-      case "backend":
-        return 1; 
-      case "frontend":
-        return 2;
-      case "database":
-        return 3;
-      case "devops e automação de infraestrutura":
-        return 4;
-      case "mobile":
-        return 5;
-      case "ux e design":
-        return 6;
+      case "javascript":
+        // Verifica se a resposta da pergunta 1 inclui outras linguagens backend
+        if (["python", "java", "c#", "ruby", "php", "c++"].some(option => respostaLowerCase.includes(option))) {
+          // Retorna o ID do estudo de frontend e backend
+          return "1,2"; // IDs do estudo de backend e frontend
+        } else {
+          // Retorna apenas o ID do estudo de frontend
+          return "2"; // ID do estudo de frontend
+        }
+      case "python":
+      case "java":
+      case "c#":
+      case "ruby":
+      case "php":
+      case "c++":
+        // Retorna apenas o ID do estudo de backend
+        return "1"; // ID do estudo de backend
+      case "swift":
+        // Retorna o ID do estudo de mobile
+        return "5"; // ID do estudo de mobile
       default:
-        return 2; 
+        // Se a resposta não corresponder a nenhuma opção conhecida, retorne um valor padrão
+        break;
     }
   }
 
-  return 2;
+  // Se nenhuma resposta válida for encontrada nas perguntas 1 e 2, retorne um valor padrão
+  return "2"; // Valor padrão: ID do estudo de frontend
 }
+
+
 
 
 app.post("/questionnaire-responses", async (req, res) => {
@@ -835,19 +945,17 @@ app.post("/questionnaire-responses", async (req, res) => {
   try {
     // Verificar se 'respostas' é um array com 3 elementos
     if (!Array.isArray(respostas) || respostas.length !== 3) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "O array 'respostas' deve ter exatamente 3 elementos",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "O array 'respostas' deve ter exatamente 3 elementos",
+      });
     }
 
     // Determinar o estudo indicado
     const estudoIndicadoId = determinarEstudoIndicado(respostas);
 
     // Verificar se o estudo indicado é válido
-    if (estudoIndicadoId < 1 || estudoIndicadoId > 6) {
+    if (estudoIndicadoId < 1 || estudoIndicadoId > 8) {
       return res
         .status(400)
         .json({ success: false, message: "ID de estudo indicado inválido" });
@@ -869,7 +977,7 @@ app.post("/questionnaire-responses", async (req, res) => {
 
     // Atualizar a coluna 'preferencia_estudo' no banco de dados
     const updatedUser = await pool.query(
-      "UPDATE users SET preferencia_estudo = $1 WHERE user_id = $2 RETURNING *",
+      "UPDATE users SET preferencias_estudo = $1 WHERE user_id = $2 RETURNING *",
       [estudoIndicadoId, user_id]
     );
 
@@ -877,27 +985,24 @@ app.post("/questionnaire-responses", async (req, res) => {
     await Promise.all(
       respostas.map(async (resposta) => {
         const { pergunta_id, resposta_do_usuario } = resposta;
-        const respostaBoolean = resposta_do_usuario.toLowerCase() === "sim";
 
         await pool.query(
           "INSERT INTO questionnaire_responses (user_id, question1, question2, question3) VALUES ($1, $2, $3, $4)",
           [
             user_id,
-            ...Array.from({ length: 3 }).map(
-              (_, i) => respostaBoolean && i + 1 === pergunta_id
-            ),
+            pergunta_id === 1 ? resposta_do_usuario : null,
+            pergunta_id === 2 ? resposta_do_usuario : null,
+            pergunta_id === 3 ? resposta_do_usuario.join(",") : null, // Converta o array para uma string CSV
           ]
         );
       })
     );
 
-    res
-      .status(200)
-      .json({
-        success: true,
-        message: "Respostas registradas com sucesso",
-        updatedUser,
-      });
+    res.status(200).json({
+      success: true,
+      message: "Respostas registradas com sucesso",
+      updatedUser,
+    });
   } catch (error) {
     console.error(error);
     res
@@ -906,14 +1011,13 @@ app.post("/questionnaire-responses", async (req, res) => {
   }
 });
 
-// Adicione a rota para obter a preferencia_estudo
 app.get("/user-preference-study/:user_id", async (req, res) => {
   const { user_id } = req.params;
 
   try {
-    // Consulta a preferencia_estudo na tabela users
+    // Consulta a preferencias_estudo na tabela users
     const userResult = await pool.query(
-      "SELECT preferencia_estudo FROM users WHERE user_id = $1",
+      "SELECT preferencias_estudo FROM users WHERE user_id = $1",
       [user_id]
     );
 
@@ -923,12 +1027,17 @@ app.get("/user-preference-study/:user_id", async (req, res) => {
         .json({ success: false, message: "Usuário não encontrado" });
     }
 
-    const preferenciaEstudoId = userResult.rows[0].preferencia_estudo;
+    const preferenciasEstudoString = userResult.rows[0].preferencias_estudo;
+
+    let preferenciaEstudoIds = [];
+    if (preferenciasEstudoString) {
+      preferenciaEstudoIds = preferenciasEstudoString.split(",").map(Number);
+    }
 
     // Consulta os dados correspondentes na tabela estudos
     const estudoResult = await pool.query(
-      "SELECT * FROM estudos WHERE id = $1",
-      [preferenciaEstudoId]
+      "SELECT * FROM estudos WHERE id = ANY($1)",
+      [preferenciaEstudoIds]
     );
 
     if (estudoResult.rows.length === 0) {
@@ -937,9 +1046,9 @@ app.get("/user-preference-study/:user_id", async (req, res) => {
         .json({ success: false, message: "Estudo não encontrado" });
     }
 
-    const preferenciaEstudo = estudoResult.rows[0];
+    const preferenciaEstudos = estudoResult.rows;
 
-    res.status(200).json({ success: true, preferenciaEstudo });
+    res.status(200).json({ success: true, preferenciaEstudos });
   } catch (error) {
     console.error(error);
     res
@@ -948,36 +1057,9 @@ app.get("/user-preference-study/:user_id", async (req, res) => {
   }
 });
 
-// Rota para verificar se a preferência_estudo está preenchida
-app.get("/preferencia-estudo/:user_id", async (req, res) => {
-  const { user_id } = req.params;
 
-  try {
-    // Consulta a preferencia_estudo na tabela users
-    const userResult = await pool.query(
-      "SELECT preferencia_estudo FROM users WHERE user_id = $1",
-      [user_id]
-    );
 
-    if (userResult.rows.length === 0) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Usuário não encontrado" });
-    }
 
-    const preferenciaEstudoId = userResult.rows[0].preferencia_estudo;
-
-    // Verifica se a preferencia_estudo está preenchida
-    const preferenciaEstudoPreenchida = preferenciaEstudoId !== null;
-
-    res.status(200).json({ success: true, preferenciaEstudoPreenchida });
-  } catch (error) {
-    console.error(error);
-    res
-      .status(500)
-      .json({ success: false, message: "Erro interno do servidor" });
-  }
-});
 
 // MATERIAIS
 app.get("/materiais/:conteudo_id", async (req, res) => {
@@ -1000,33 +1082,79 @@ app.get("/materiais/:conteudo_id", async (req, res) => {
   }
 });
 
-
 app.post("/adicionarEstudo", async (req, res) => {
   const { nome, descricao, link } = req.body;
 
   try {
     if (!nome) {
-      return res.status(400).json({ success: false, message: "Nome do estudo é obrigatório" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Nome do estudo é obrigatório" });
     }
 
-    const existingEstudo = await pool.query("SELECT * FROM estudos WHERE LOWER(nome) = LOWER($1)", [nome]);
+    const existingEstudo = await pool.query(
+      "SELECT * FROM estudos WHERE LOWER(nome) = LOWER($1)",
+      [nome]
+    );
 
     // Se o estudo já existir, retorne um erro
     if (existingEstudo.rows.length > 0) {
-      return res.status(400).json({ success: false, message: "Este nome de estudo já existe" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Este nome de estudo já existe" });
     }
 
     // Insira o novo estudo na tabela estudos
-    const result = await pool.query("INSERT INTO estudos (nome, descricao, link) VALUES ($1, $2, $3) RETURNING *", [nome, descricao, link]);
+    const result = await pool.query(
+      "INSERT INTO estudos (nome, descricao, link) VALUES ($1, $2, $3) RETURNING *",
+      [nome, descricao, link]
+    );
 
     // Envie a resposta com os dados do novo estudo inserido
     res.status(201).json(result.rows[0]);
   } catch (error) {
-    console.error('Erro ao inserir novo estudo:', error);
+    console.error("Erro ao inserir novo estudo:", error);
     res.status(500).json({ success: false, message: "Internal server error" });
   }
 });
 
+app.get("/dias-seguidos-login", async (req, res) => {
+  const userId = req.query.userId; // Supondo que você tenha o ID do usuário
+
+  try {
+    const result = await pool.query(
+      "SELECT login_date FROM login_history WHERE user_id = $1 ORDER BY login_date DESC",
+      [userId]
+    );
+
+    if (result.rows.length === 0) {
+      // Se não houver registros de login para o usuário
+      return res.status(200).json({ diasSeguidos: 0 });
+    }
+
+    let diasSeguidos = 1;
+    const loginDates = result.rows.map((row) => row.login_date);
+
+    for (let i = 0; i < loginDates.length - 1; i++) {
+      const diffInDays = Math.floor(
+        (loginDates[i] - loginDates[i + 1]) / (1000 * 60 * 60 * 24)
+      );
+
+      if (diffInDays === 1) {
+        diasSeguidos++;
+      } else if (diffInDays > 1) {
+        break; // Interrompe a contagem se houver uma lacuna de mais de um dia
+      }
+    }
+
+    return res.status(200).json({ diasSeguidos });
+  } catch (error) {
+    console.error(error);
+    return res
+      .status(500)
+      .json({ success: false, message: "Internal server error" });
+  }
+});
 
 // Endpoint para adicionar novo conteúdo
 app.post("/adicionarConteudo", async (req, res) => {
@@ -1034,24 +1162,79 @@ app.post("/adicionarConteudo", async (req, res) => {
 
   try {
     if (!titulo || !estudo_id) {
-      return res.status(400).json({ success: false, message: "Título e ID do estudo são obrigatórios" });
+      return res.status(400).json({
+        success: false,
+        message: "Título e ID do estudo são obrigatórios",
+      });
     }
 
     // Verifique se o estudo associado ao conteúdo existe
-    const existingEstudo = await pool.query("SELECT * FROM estudos WHERE id = $1", [estudo_id]);
+    const existingEstudo = await pool.query(
+      "SELECT * FROM estudos WHERE id = $1",
+      [estudo_id]
+    );
     if (existingEstudo.rows.length === 0) {
-      return res.status(400).json({ success: false, message: "O estudo associado não existe" });
+      return res
+        .status(400)
+        .json({ success: false, message: "O estudo associado não existe" });
     }
 
     // Insira o novo conteúdo na tabela conteudos
-    const result = await pool.query("INSERT INTO conteudos (titulo, descricao, estudo_id, pontos, materiais) VALUES ($1, $2, $3, $4, $5) RETURNING *",
-      [titulo, descricao, estudo_id, pontos, materiais]);
+    const result = await pool.query(
+      "INSERT INTO conteudos (titulo, descricao, estudo_id, pontos, materiais) VALUES ($1, $2, $3, $4, $5) RETURNING *",
+      [titulo, descricao, estudo_id, pontos, materiais]
+    );
 
     // Envie a resposta com os dados do novo conteúdo inserido
     res.status(201).json(result.rows[0]);
   } catch (error) {
-    console.error('Erro ao inserir novo conteúdo:', error);
+    console.error("Erro ao inserir novo conteúdo:", error);
     res.status(500).json({ success: false, message: "Internal server error" });
+  }
+});
+
+app.get("/user/:userId/days", async (req, res) => {
+  const userId = req.params.userId;
+
+  try {
+    const result = await pool.query(
+      "SELECT dias_seguidos FROM login_history WHERE user_id = $1",
+      [userId]
+    );
+
+    if (result.rows.length > 0) {
+      const diasSeguidos = result.rows[0].dias_seguidos;
+      res.status(200).json({ success: true, diasSeguidos: diasSeguidos });
+    } else {
+      res.status(404).json({ success: false, message: "User not found or no login history available." });
+    }
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: "Internal server error" });
+  }
+});
+
+app.get("/perguntas-erradas/:user_id/:conteudo_id", async (req, res) => {
+  const { user_id, conteudo_id } = req.params;
+
+  try {
+    // Consulta SQL para obter as perguntas que o usuário errou
+    const query = `
+      SELECT p.id, p.pergunta
+      FROM perguntas p
+      JOIN respostas r ON p.id = r.pergunta_id
+      WHERE r.user_id = $1 
+      AND p.conteudo_id = $2
+      AND r.resposta_correta = FALSE
+    `;
+    
+    const { rows } = await pool.query(query, [user_id, conteudo_id]);
+
+    // Retornando as perguntas que o usuário errou
+    res.status(200).json({ success: true, perguntas_erradas: rows });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: "Erro interno do servidor" });
   }
 });
 
