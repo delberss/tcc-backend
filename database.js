@@ -20,10 +20,10 @@ const { Pool } = require("pg");
 
 const pool = new Pool({
     user: "postgres",
-    password: "senha",
+    password: "admin",
     host: "localhost",
     port: 5432,
-    database: "local"
+    database: "tcc-local"
 });
 
 
@@ -158,6 +158,14 @@ const pool = new Pool({
 //     materiais JSON
 // );
 
+// ALTER TABLE conteudos
+// ADD COLUMN videoConteudo VARCHAR(255);
+
+// ALTER TABLE conteudos
+// ADD COLUMN tempoMaximo INTEGER;
+
+
+
 // BACKEND 
 // INSERT INTO conteudos (titulo, descricao, estudo_id, pontos, materiais) VALUES
 //     ('Introdução ao Node.js', 'Aprenda sobre o ambiente de execução JavaScript server-side.', 1, 100, '["https://developer.mozilla.org/pt-BR/docs/Learn/Server-side/Express_Nodejs/Introduction", "https://learn.microsoft.com/pt-br/training/modules/intro-to-nodejs/", "https://dev.to/gabrielhsilvestre/introducao-ao-nodejs-14l1"]');
@@ -222,6 +230,9 @@ const pool = new Pool({
 //     opcao_d VARCHAR(255),
 //     resposta_correta CHAR(1)
 // );
+
+// ALTER TABLE perguntas
+// ADD COLUMN minutagemPergunta INTEGER;
 
 // ============ BACKEND ===================
 

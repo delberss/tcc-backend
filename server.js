@@ -391,14 +391,15 @@ app.get("/conteudos/:estudo_id", async (req, res) => {
 
   try {
     const result = await pool.query(
-      "SELECT id, titulo, descricao FROM conteudos WHERE estudo_id = $1 ORDER BY id",
+      "SELECT id, titulo, descricao, tempomaximo FROM conteudos WHERE estudo_id = $1 ORDER BY id",
       [estudoIdAsInt]
     );
 
-    const conteudos = result.rows.map(({ id, titulo, descricao }) => ({
+    const conteudos = result.rows.map(({ id, titulo, descricao, tempomaximo }) => ({
       id,
       titulo,
       descricao,
+      tempomaximo
     }));
 
     res.status(200).json(conteudos);
@@ -418,6 +419,7 @@ app.post("/add/pergunta", verifyToken, async (req, res) => {
     opcao_c,
     opcao_d,
     resposta_correta,
+    minutagemPergunta, // Adicionado
   } = req.body;
 
   try {
@@ -433,7 +435,7 @@ app.post("/add/pergunta", verifyToken, async (req, res) => {
 
     // Adicionar a pergunta ao banco de dados
     const result = await pool.query(
-      "INSERT INTO perguntas (conteudo_id, pergunta, opcao_a, opcao_b, opcao_c, opcao_d, resposta_correta) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id",
+      "INSERT INTO perguntas (conteudo_id, pergunta, opcao_a, opcao_b, opcao_c, opcao_d, resposta_correta, minutagemPergunta) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id",
       [
         conteudo_id,
         pergunta,
@@ -442,6 +444,7 @@ app.post("/add/pergunta", verifyToken, async (req, res) => {
         opcao_c,
         opcao_d,
         resposta_correta,
+        minutagemPergunta, // Adicionado
       ]
     );
 
@@ -460,13 +463,44 @@ app.post("/add/pergunta", verifyToken, async (req, res) => {
   }
 });
 
+
+// EDITAR MINUTAGEM DE PERGUNTA
+app.put("/edit/pergunta/:id", verifyToken, async (req, res) => {
+  const perguntaId = req.params.id;
+  const { minutagemPergunta } = req.body;
+
+  try {
+    // Verifica se a pergunta existe
+    const perguntaResult = await pool.query(
+      "SELECT * FROM perguntas WHERE id = $1",
+      [perguntaId]
+    );
+
+    if (perguntaResult.rows.length === 0) {
+      return res.status(404).json({ success: false, message: "Pergunta não encontrada" });
+    }
+
+    // Atualiza a minutagemPergunta da pergunta
+    await pool.query(
+      "UPDATE perguntas SET minutagemPergunta = $1 WHERE id = $2",
+      [minutagemPergunta, perguntaId]
+    );
+
+    res.status(200).json({ success: true, message: "Minutagem da pergunta atualizada com sucesso" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: "Erro interno do servidor" });
+  }
+});
+
+
 // 9 - PERGUNTAS DE UM CONTEUDO
 app.get("/perguntas/:conteudo_id", async (req, res) => {
   const { conteudo_id } = req.params;
 
   try {
     const result = await pool.query(
-      "SELECT id, pergunta, opcao_a, opcao_b, opcao_c, opcao_d FROM perguntas WHERE conteudo_id = $1",
+      "SELECT id, pergunta, opcao_a, opcao_b, opcao_c, opcao_d, minutagemPergunta FROM perguntas WHERE conteudo_id = $1",
       [conteudo_id]
     );
 
@@ -480,6 +514,32 @@ app.get("/perguntas/:conteudo_id", async (req, res) => {
       .json({ success: false, message: "Erro interno do servidor" });
   }
 });
+
+
+// EDITAR VIDEO LINK DE UM CONTEUDO
+app.put("/conteudos/:id/video", async (req, res) => {
+  const { id } = req.params;
+  const { videoConteudo } = req.body;
+
+  try {
+    const result = await pool.query(
+      "UPDATE conteudos SET videoConteudo = $1 WHERE id = $2 RETURNING *",
+      [videoConteudo, id]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ success: false, message: "Conteúdo não encontrado" });
+    }
+
+    const updatedConteudo = result.rows[0];
+
+    res.status(200).json({ success: true, conteudo: updatedConteudo });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: "Erro interno do servidor" });
+  }
+});
+
 
 // FUNÇÃO PARA CONQUISTAS:
 
@@ -530,6 +590,7 @@ app.post("/respostas", verifyToken, async (req, res) => {
   try {
     const conclusoes = {}; // Armazenar conclusões para evitar pontuações duplicadas
     let todasCorretas = true; // Flag para verificar se todas as respostas estão corretas
+    let respostasCorretas = 0; // Contador de respostas corretas
 
     await Promise.all(
       respostas.map(async ({ pergunta_id, resposta_do_usuario }) => {
@@ -547,6 +608,11 @@ app.post("/respostas", verifyToken, async (req, res) => {
             resposta_correta.toUpperCase();
 
           todasCorretas = todasCorretas && acertou; // Atualiza a flag com o resultado da pergunta
+
+          // Se a resposta estiver correta, incrementa o contador
+          if (acertou) {
+            respostasCorretas++;
+          }
 
           await pool.query(
             "INSERT INTO respostas (user_id, pergunta_id, resposta_do_usuario, resposta_correta) VALUES ($1, $2, $3, $4) ON CONFLICT (user_id, pergunta_id) DO UPDATE SET resposta_do_usuario = $3, resposta_correta = $4",
@@ -585,7 +651,7 @@ app.post("/respostas", verifyToken, async (req, res) => {
       );
     }
 
-    res.status(200).json({ success: true });
+    res.status(200).json({ success: true, respostasCorretas }); // Retorna a quantidade de respostas corretas
   } catch (error) {
     console.error(error);
     res
@@ -593,6 +659,7 @@ app.post("/respostas", verifyToken, async (req, res) => {
       .json({ success: false, message: "Erro interno do servidor" });
   }
 });
+
 
 // 11- OBTÉM QUANTIDADE DE PERGUNTAS e QUANTIDADE DE ACERTO EM UM CONTEUDO
 app.get("/quantidade-acertos/:conteudo_id", verifyToken, async (req, res) => {
@@ -1061,24 +1128,26 @@ app.get("/user-preference-study/:user_id", async (req, res) => {
 
 
 
-// MATERIAIS
+// MATERIAIS e VIDEOCONTEUDO
 app.get("/materiais/:conteudo_id", async (req, res) => {
   const { conteudo_id } = req.params;
 
   try {
     const result = await pool.query(
-      "SELECT materiais FROM conteudos WHERE id = $1",
+      "SELECT materiais, videoconteudo FROM conteudos WHERE id = $1",
       [conteudo_id]
     );
 
-    const materiais = result.rows;
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, message: "Conteúdo não encontrado" });
+    }
 
-    res.status(200).json(materiais);
+    const { materiais, videoconteudo } = result.rows[0];
+
+    res.status(200).json({ materiais, videoconteudo });
   } catch (error) {
     console.error(error);
-    res
-      .status(500)
-      .json({ success: false, message: "Erro interno do servidor" });
+    res.status(500).json({ success: false, message: "Erro interno do servidor" });
   }
 });
 
@@ -1158,13 +1227,13 @@ app.get("/dias-seguidos-login", async (req, res) => {
 
 // Endpoint para adicionar novo conteúdo
 app.post("/adicionarConteudo", async (req, res) => {
-  const { titulo, descricao, estudo_id, pontos, materiais } = req.body;
+  const { titulo, descricao, estudo_id, pontos, materiais, tempomaximo, linkVideo  } = req.body;
 
   try {
-    if (!titulo || !estudo_id) {
+    if (!titulo || !estudo_id || !tempomaximo) {
       return res.status(400).json({
         success: false,
-        message: "Título e ID do estudo são obrigatórios",
+        message: "Título, ID do estudo e tempo máximo do questionário são obrigatórios",
       });
     }
 
@@ -1181,8 +1250,8 @@ app.post("/adicionarConteudo", async (req, res) => {
 
     // Insira o novo conteúdo na tabela conteudos
     const result = await pool.query(
-      "INSERT INTO conteudos (titulo, descricao, estudo_id, pontos, materiais) VALUES ($1, $2, $3, $4, $5) RETURNING *",
-      [titulo, descricao, estudo_id, pontos, materiais]
+      "INSERT INTO conteudos (titulo, descricao, estudo_id, pontos, materiais, videoconteudo, tempomaximo) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *",
+      [titulo, descricao, estudo_id, pontos, materiais, linkVideo, tempomaximo]
     );
 
     // Envie a resposta com os dados do novo conteúdo inserido
