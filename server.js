@@ -134,27 +134,32 @@ async function updateLoginHistoryAndScore(userId) {
 
 // 1 - FAZER LOGIN
 app.post("/login", async (req, res) => {
-  let { email, password, userType } = req.body;
-  userType = userType.toLowerCase();
-  email = email.toLowerCase();
+  let { emailOrUsername, password, userType } = req.body;
+  userType = userType?.toLowerCase();
 
+  console.log(emailOrUsername)
 
   try {
-    const result = await pool.query(
-      "SELECT user_id, name, email, password, profile_image_url, pontuacao_geral, preferencias_estudo, tipo_usuario FROM users WHERE email = $1",
-      [email]
-    );
+    // Verificar se o emailOrUsername é um email ou um nome de usuário
+    const isEmail = emailOrUsername.includes('@');
+    let userQuery;
+
+    if (isEmail) {
+      userQuery = {
+        text: "SELECT user_id, name, email, password, profile_image_url, pontuacao_geral, preferencias_estudo, tipo_usuario, username FROM users WHERE email = $1 AND tipo_usuario = $2",
+        values: [emailOrUsername.toLowerCase(), userType]
+      };
+    } else {
+      userQuery = {
+        text: "SELECT user_id, name, email, password, profile_image_url, pontuacao_geral, preferencias_estudo, tipo_usuario, username FROM users WHERE username = $1 AND tipo_usuario = $2",
+        values: [emailOrUsername.toLowerCase(), userType]
+      };
+    }
+
+    const result = await pool.query(userQuery);
 
     if (result.rows.length > 0) {
       const user = result.rows[0];
-
-      if (user.tipo_usuario.toLowerCase() != userType) {
-        return res.status(401).json({
-          success: false,
-          message: "Email não existe para esse login",
-        });
-      }
-
       const passwordMatch = await bcrypt.compare(password, user.password);
 
       if (passwordMatch) {
@@ -170,6 +175,7 @@ app.post("/login", async (req, res) => {
             id: user.user_id,
             name: user.name,
             email: user.email,
+            username: user.username,
             profileImageUrl: user.profile_image_url,
             preferenciaEstudo: user.preferencias_estudo,
             pontuacaoGeral: user.pontuacao_geral,
@@ -192,13 +198,14 @@ app.post("/login", async (req, res) => {
 
       res
         .status(401)
-        .json({ success: false, message: "E-mail não cadastrado." });
+        .json({ success: false, message: "E-mail ou nome de usuário não cadastrado." });
     }
   } catch (error) {
     console.error(error);
     res.status(500).json({ success: false, message: "Internal server error" });
   }
 });
+
 
 // 2 - REGISTRAR USER
 app.post("/register", async (req, res) => {
@@ -224,6 +231,9 @@ app.post("/register", async (req, res) => {
         .json({ success: false, message: "E-mail já foi usado" });
     }
 
+    // Extrair o username do email
+    const username = email.split("@")[0];
+
     // Formatar o nome com as primeiras letras maiúsculas
     const formattedName = name.replace(/\b\w/g, (char) => char.toUpperCase());
 
@@ -236,13 +246,14 @@ app.post("/register", async (req, res) => {
       await client.query("BEGIN");
 
       const insertSTMT =
-        "INSERT INTO users (name, email, password, pontuacao_geral, tipo_usuario) VALUES ($1, $2, $3, $4, $5)";
+        "INSERT INTO users (name, email, password, pontuacao_geral, tipo_usuario, username) VALUES ($1, $2, $3, $4, $5, $6)";
       const values = [
         formattedName,
         email.toLowerCase(),
         hashedPassword,
         0,
         "estudante",
+        username,
       ]; // Definindo 'estudante' como tipo padrão
 
       await client.query(insertSTMT, values);
@@ -265,6 +276,7 @@ app.post("/register", async (req, res) => {
     res.status(500).json({ success: false, message: "Internal server error" });
   }
 });
+
 
 // 3 - USERS DO SISTEMA
 app.get("/users", verifyToken, async (req, res) => {
@@ -957,8 +969,9 @@ app.put("/conteudos/:id/video", async (req, res) => {
 
 // 23 - QUESTIONARIO DE PERFIL
 app.post("/questionnaire-responses", async (req, res) => {
+  console.log(req.body)
   const { respostas, userData } = req.body;
-  const { email } = userData;
+  const { email, username } = userData;
 
   try {
     // Verificar se 'respostas' é um array com 3 elementos
@@ -979,11 +992,20 @@ app.post("/questionnaire-responses", async (req, res) => {
         .json({ success: false, message: "ID de estudo indicado inválido" });
     }
 
-    // Consultar o banco de dados para obter o user_id com base no e-mail
-    const userResult = await pool.query(
-      "SELECT user_id FROM users WHERE email = $1",
-      [email.toLowerCase()]
-    );
+    let userResult;
+
+    if (email) {
+      userResult = await pool.query(
+        "SELECT user_id FROM users WHERE email = $1",
+        [email.toLowerCase()]
+      );
+    } else {
+      userResult = await pool.query(
+        "SELECT user_id FROM users WHERE username = $1",
+        [username.toLowerCase()]
+      );
+    }
+    
 
     if (userResult.rows.length === 0) {
       return res

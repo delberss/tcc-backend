@@ -65,6 +65,10 @@ const pool = new Pool({
 // ALTER TABLE users
 // ADD COLUMN preferencias_estudo VARCHAR(255);
 
+// ALTER TABLE users
+// ADD COLUMN username VARCHAR(50) UNIQUE;
+
+
 // CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 // INSERT INTO users (name, email, password, pontuacao_geral, tipo_usuario)
