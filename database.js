@@ -234,6 +234,60 @@ const pool = new Pool({
 // ALTER TABLE perguntas
 // ADD COLUMN minutagemPergunta INTEGER;
 
+
+
+// PERGUNTA OFICIAL - BACKEND:
+
+// INSERT INTO perguntas (pergunta, conteudo_id, opcao_a, opcao_b, opcao_c, opcao_d, resposta_correta) 
+// VALUES ('O Node.js é um ambiente para execução de códigos de qual linguagem?', 1, 'Python', 'C++', 'Ruby', 'JavaScript', 'D');
+
+// INSERT INTO perguntas (pergunta, conteudo_id, opcao_a, opcao_b, opcao_c, opcao_d, resposta_correta) 
+// VALUES ('Qual desses utilitários é desenvolvido em Node.js?', 1, 'npm', 'Pip', 'Maven', 'NuGet', 'A');
+
+// UPDATE perguntas 
+// SET pergunta = 'Qual desses utilitários é desenvolvido em Node.js?',
+//     opcao_a = 'npm',
+//     opcao_b = 'Pip',
+//     opcao_c = 'Maven',
+//     opcao_d = 'NuGet',
+//     resposta_correta = 'A'
+// WHERE conteudo_id = 1 and id=2;
+
+// INSERT INTO perguntas (pergunta, conteudo_id, opcao_a, opcao_b, opcao_c, opcao_d, resposta_correta) 
+// VALUES ('Qual dessas é responsável por compilar o código JavaScript para o formato nativo de máquina antes de executá-lo?', 1, 'WebAssembly', 'TypeScript', 'Máquina Virtual V8', 'Babel', 'C');
+
+// UPDATE perguntas 
+// SET pergunta = 'Qual dessas é responsável por compilar o código JavaScript para o formato nativo de máquina antes de executá-lo?',
+//     opcao_a = 'WebAssembly',
+//     opcao_b = 'TypeScript',
+//     opcao_c = 'Máquina Virtual V8',
+//     opcao_d = 'Babel',
+//     resposta_correta = 'C'
+// WHERE conteudo_id = 1 and id = 3;
+
+// INSERT INTO perguntas (pergunta, conteudo_id, opcao_a, opcao_b, opcao_c, opcao_d, resposta_correta) 
+// VALUES ('A arquitetura JavaScript é dividida basicamente em 3 partes, qual dessas NÃO faz parte?', 1, 'Call Stack', 'Callback Queue', 'Event Loop', 'NPM', 'D');
+
+// UPDATE perguntas 
+// SET pergunta = 'A arquitetura JavaScript é dividida basicamente em 3 partes, qual dessas NÃO faz parte?',
+//     opcao_a = 'Call Stack',
+//     opcao_b = 'Callback Queue',
+//     opcao_c = 'Event Loop',
+//     opcao_d = 'NPM',
+//     resposta_correta = 'D'
+// WHERE conteudo_id = 1 and id=4;
+
+
+// UPDATE perguntas 
+// SET pergunta = 'O Node.js é um ambiente para execução de códigos de qual linguagem?',
+//     opcao_a = 'Python',
+//     opcao_b = 'C++',
+//     opcao_c = 'Ruby',
+//     opcao_d = 'JavaScript',
+//     resposta_correta = 'D'
+// WHERE conteudo_id = 1 and id= 1;
+
+
 // ============ BACKEND ===================
 
 // INSERT INTO perguntas (pergunta, conteudo_id, opcao_a, opcao_b, opcao_c, opcao_d, resposta_correta) VALUES

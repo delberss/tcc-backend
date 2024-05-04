@@ -5,7 +5,7 @@ const pool = require("./database");
 const jwt = require("jsonwebtoken");
 const multer = require("multer");
 const path = require("path");
-const sinon = require("sinon"); // Importe a biblioteca sinon
+const sinon = require("sinon");
 const app = express();
 const { format } = require('date-fns');
 
@@ -334,22 +334,6 @@ app.get("/estudos", async (req, res) => {
   }
 });
 
-app.get("/estudos/:nome", async (req, res) => {
-  const { nome } = req.params;
-  try {
-    const result = await pool.query(
-      "SELECT descricao, link  FROM estudos WHERE UPPER(nome) = $1 ",
-      [nome.toUpperCase()]
-    );
-    const resultado = result.rows;
-
-    res.status(200).json(resultado);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ success: false, message: "Internal server error" });
-  }
-});
-
 // 6 - QUAL ID DE UM ESTUDO
 app.get("/id/:estudo", async (req, res) => {
   const { estudo } = req.params;
@@ -391,14 +375,15 @@ app.get("/conteudos/:estudo_id", async (req, res) => {
 
   try {
     const result = await pool.query(
-      "SELECT id, titulo, descricao, tempomaximo FROM conteudos WHERE estudo_id = $1 ORDER BY id",
+      "SELECT id, titulo, descricao, pontos, tempomaximo FROM conteudos WHERE estudo_id = $1 ORDER BY id",
       [estudoIdAsInt]
     );
 
-    const conteudos = result.rows.map(({ id, titulo, descricao, tempomaximo }) => ({
+    const conteudos = result.rows.map(({ id, titulo, descricao, pontos, tempomaximo }) => ({
       id,
       titulo,
       descricao,
+      pontos,
       tempomaximo
     }));
 
@@ -463,37 +448,6 @@ app.post("/add/pergunta", verifyToken, async (req, res) => {
   }
 });
 
-
-// EDITAR MINUTAGEM DE PERGUNTA
-app.put("/edit/pergunta/:id", verifyToken, async (req, res) => {
-  const perguntaId = req.params.id;
-  const { minutagemPergunta } = req.body;
-
-  try {
-    // Verifica se a pergunta existe
-    const perguntaResult = await pool.query(
-      "SELECT * FROM perguntas WHERE id = $1",
-      [perguntaId]
-    );
-
-    if (perguntaResult.rows.length === 0) {
-      return res.status(404).json({ success: false, message: "Pergunta não encontrada" });
-    }
-
-    // Atualiza a minutagemPergunta da pergunta
-    await pool.query(
-      "UPDATE perguntas SET minutagemPergunta = $1 WHERE id = $2",
-      [minutagemPergunta, perguntaId]
-    );
-
-    res.status(200).json({ success: true, message: "Minutagem da pergunta atualizada com sucesso" });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ success: false, message: "Erro interno do servidor" });
-  }
-});
-
-
 // 9 - PERGUNTAS DE UM CONTEUDO
 app.get("/perguntas/:conteudo_id", async (req, res) => {
   const { conteudo_id } = req.params;
@@ -514,73 +468,6 @@ app.get("/perguntas/:conteudo_id", async (req, res) => {
       .json({ success: false, message: "Erro interno do servidor" });
   }
 });
-
-
-// EDITAR VIDEO LINK DE UM CONTEUDO
-app.put("/conteudos/:id/video", async (req, res) => {
-  const { id } = req.params;
-  const { videoConteudo } = req.body;
-
-  try {
-    const result = await pool.query(
-      "UPDATE conteudos SET videoConteudo = $1 WHERE id = $2 RETURNING *",
-      [videoConteudo, id]
-    );
-
-    if (result.rowCount === 0) {
-      return res.status(404).json({ success: false, message: "Conteúdo não encontrado" });
-    }
-
-    const updatedConteudo = result.rows[0];
-
-    res.status(200).json({ success: true, conteudo: updatedConteudo });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ success: false, message: "Erro interno do servidor" });
-  }
-});
-
-
-// FUNÇÃO PARA CONQUISTAS:
-
-// Verifica a quantidade de conclusões do usuário
-
-const verificaConquistas = async (user_id) => {
-  const resultConclusoes = await pool.query(
-    "SELECT COUNT(*) as quantidade FROM conclusoes WHERE user_id = $1",
-    [user_id]
-  );
-  const quantidadeConclusoes = resultConclusoes.rows[0].quantidade;
-
-  if (quantidadeConclusoes > 0) {
-    // Determina quais conquistas associar com base na quantidade de conclusões
-    const conquistasParaAdicionar = [];
-
-    if (quantidadeConclusoes >= 10) {
-      conquistasParaAdicionar.push(3); // ID da conquista "10 conteúdos concluídos"
-    }
-
-    if (quantidadeConclusoes >= 5) {
-      conquistasParaAdicionar.push(2); // ID da conquista "5 conteúdos concluídos"
-    }
-
-    if (quantidadeConclusoes >= 1) {
-      conquistasParaAdicionar.push(1); // ID da conquista "Primeiro conteúdo concluído"
-    }
-
-    // Insere as conquistas na tabela usuarios_conquistas
-    if (conquistasParaAdicionar.length > 0) {
-      const values = conquistasParaAdicionar
-        .map((conquistaId) => `(${user_id}, ${conquistaId})`)
-        .join(",");
-      await pool.query(
-        `INSERT INTO usuarios_conquistas (user_id, conquista_id) VALUES ${values} ON CONFLICT DO NOTHING`
-      );
-    }
-  }
-};
-
-// Restante do seu código para conceder pontos e conclusão
 
 // 10- ADICIONA RESPOSTA e ATUALIZA se cada pergunta respondida tá certo ou não
 app.post("/respostas", verifyToken, async (req, res) => {
@@ -659,7 +546,6 @@ app.post("/respostas", verifyToken, async (req, res) => {
       .json({ success: false, message: "Erro interno do servidor" });
   }
 });
-
 
 // 11- OBTÉM QUANTIDADE DE PERGUNTAS e QUANTIDADE DE ACERTO EM UM CONTEUDO
 app.get("/quantidade-acertos/:conteudo_id", verifyToken, async (req, res) => {
@@ -779,7 +665,6 @@ app.get("/pontuacao-geral/:user_id", async (req, res) => {
       .json({ success: false, message: "Erro interno do servidor" });
   }
 });
-
 // 15- VERIFICA QTD  DE CONTEUDOS COMPLETOS
 app.get("/quantidade-conteudos/:user_id", async (req, res) => {
   const { user_id } = req.params;
@@ -890,121 +775,187 @@ app.get("/conquistas-usuario/:user_id", async (req, res) => {
   }
 });
 
-// // 13- VERIFICA CONTEUDO CONCLUIDO
-// app.get("/verificar-conclusao/:user_id", async (req, res) => {
-//   const { user_id } = req.params;
-
-//   try {
-//     const result = await pool.query(
-//       `SELECT conteudo_id
-//       FROM conclusoes
-//       WHERE conclusoes.user_id = $1`,
-//       [user_id]
-//     );
-
-//     const conclusao = result.rows[0];
-
-//     res.status(200).json({ conclusao });
-//   } catch (error) {
-//     console.error(error);
-//     res
-//       .status(500)
-//       .json({ success: false, message: "Erro interno do servidor" });
-//   }
-// });
-
-// Esta função deve ser implementada no seu backend
-const verificarRespostaCorreta = async (perguntaId, respostaUsuario) => {
+// 19 - API para xxxx
+app.get("/estudos/:nome", async (req, res) => {
+  const { nome } = req.params;
   try {
     const result = await pool.query(
-      "SELECT resposta_correta FROM perguntas WHERE id = $1",
+      "SELECT descricao, link  FROM estudos WHERE UPPER(nome) = $1 ",
+      [nome.toUpperCase()]
+    );
+    const resultado = result.rows;
+
+    res.status(200).json(resultado);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: "Internal server error" });
+  }
+});
+
+
+// 20 - Excluir pergunta
+app.delete("/pergunta/:id", verifyToken, async (req, res) => {
+  const perguntaId = req.params.id;
+
+  try {
+    // Verificar se a pergunta existe
+    const perguntaResult = await pool.query(
+      "SELECT * FROM perguntas WHERE id = $1",
+      [perguntaId]
+    );
+    if (perguntaResult.rows.length === 0) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Pergunta não encontrada" });
+    }
+
+    // Excluir respostas associadas à pergunta
+    await pool.query(
+      "DELETE FROM respostas WHERE pergunta_id = $1",
       [perguntaId]
     );
 
-    const respostaCorreta = result.rows[0].resposta_correta;
-    return respostaUsuario === respostaCorreta;
+    // Excluir a pergunta
+    await pool.query(
+      "DELETE FROM perguntas WHERE id = $1",
+      [perguntaId]
+    );
+
+    res.status(200).json({
+      success: true,
+      message: "Pergunta e respostas associadas excluídas com sucesso",
+    });
   } catch (error) {
-    console.error("Erro ao verificar resposta correta:", error);
-    throw error;
+    console.error(error);
+    res
+      .status(500)
+      .json({ success: false, message: "Erro interno do servidor" });
   }
-};
+});
 
+// 21 - Atualizar pergunta
+app.put("/pergunta/:id", verifyToken, async (req, res) => {
+  const perguntaId = req.params.id;
+  const {
+    pergunta,
+    opcao_a,
+    opcao_b,
+    opcao_c,
+    opcao_d,
+    resposta_correta,
+    minutagemPergunta,
+  } = req.body;
 
-
-function determinarEstudoIndicado(respostas) {
-  // Verifica se a resposta da pergunta 2 (preferência) contém 'javascript'
-  const preferenciaEstudo = respostas.find(
-    (resposta) => resposta.pergunta_id === 2
-  );
-
-  if (
-    preferenciaEstudo &&
-    Array.isArray(preferenciaEstudo.resposta_do_usuario) &&
-    preferenciaEstudo.resposta_do_usuario.length > 0
-  ) {
-    const respostaLowerCase = preferenciaEstudo.resposta_do_usuario.map(option => option.toLowerCase());
-
-    // Verifica se a resposta inclui 'javascript'
-    if (respostaLowerCase.includes("javascript")) {
-      // Verifica se a resposta inclui outras linguagens backend
-      if (["python", "java", "c#", "ruby", "php", "c++"].some(option => respostaLowerCase.includes(option))) {
-        // Retorna o ID do estudo de frontend e backend
-        return "1,2"; // IDs do estudo de backend e frontend
-      } else {
-        // Retorna apenas o ID do estudo de frontend
-        return "2"; // ID do estudo de frontend
-      }
-    } else if (["python", "java", "c#", "ruby", "php", "c++"].some(option => respostaLowerCase.includes(option))) {
-      // Retorna apenas o ID do estudo de backend
-      return "1"; // ID do estudo de backend
-    } else if (respostaLowerCase.includes("swift")) {
-      // Retorna o ID do estudo de mobile
-      return "5"; // ID do estudo de mobile
+  try {
+    // Verificar se a pergunta existe
+    const perguntaResult = await pool.query(
+      "SELECT * FROM perguntas WHERE id = $1",
+      [perguntaId]
+    );
+    if (perguntaResult.rows.length === 0) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Pergunta não encontrada" });
     }
-  }
 
-  // Fallback para a pergunta 1 se a pergunta 2 não fornecer uma resposta válida
-  const experienciaEstudo = respostas.find(
-    (resposta) =>
-      resposta.pergunta_id === 1 &&
-      resposta.resposta_do_usuario !== "N/A"
-  );
-
-  if (experienciaEstudo) {
-    switch (experienciaEstudo.resposta_do_usuario.toLowerCase()) {
-      case "javascript":
-        // Verifica se a resposta da pergunta 1 inclui outras linguagens backend
-        if (["python", "java", "c#", "ruby", "php", "c++"].some(option => respostaLowerCase.includes(option))) {
-          // Retorna o ID do estudo de frontend e backend
-          return "1,2"; // IDs do estudo de backend e frontend
-        } else {
-          // Retorna apenas o ID do estudo de frontend
-          return "2"; // ID do estudo de frontend
-        }
-      case "python":
-      case "java":
-      case "c#":
-      case "ruby":
-      case "php":
-      case "c++":
-        // Retorna apenas o ID do estudo de backend
-        return "1"; // ID do estudo de backend
-      case "swift":
-        // Retorna o ID do estudo de mobile
-        return "5"; // ID do estudo de mobile
-      default:
-        // Se a resposta não corresponder a nenhuma opção conhecida, retorne um valor padrão
-        break;
+    // Atualizar os detalhes da pergunta
+    if(resposta_correta){
+      await pool.query(
+        "UPDATE perguntas SET pergunta = $1, opcao_a = $2, opcao_b = $3, opcao_c = $4, opcao_d = $5, resposta_correta = $6, minutagemPergunta = $7 WHERE id = $8",
+        [
+          pergunta,
+          opcao_a,
+          opcao_b,
+          opcao_c,
+          opcao_d,
+          resposta_correta,
+          minutagemPergunta,
+          perguntaId,
+        ]
+      );
+    } else{
+      await pool.query(
+        "UPDATE perguntas SET pergunta = $1, opcao_a = $2, opcao_b = $3, opcao_c = $4, opcao_d = $5, minutagemPergunta = $6 WHERE id = $7",
+        [
+          pergunta,
+          opcao_a,
+          opcao_b,
+          opcao_c,
+          opcao_d,
+          minutagemPergunta,
+          perguntaId,
+        ]
+      );
     }
+   
+
+    res.status(200).json({
+      success: true,
+      message: "Pergunta atualizada com sucesso",
+    });
+  } catch (error) {
+    console.error(error);
+    res
+      .status(500)
+      .json({ success: false, message: "Erro interno do servidor" });
   }
+});
 
-  // Se nenhuma resposta válida for encontrada nas perguntas 1 e 2, retorne um valor padrão
-  return "2"; // Valor padrão: ID do estudo de frontend
-}
+// 22 - EDITAR MINUTAGEM DE PERGUNTA
+app.put("/edit/pergunta/:id", verifyToken, async (req, res) => {
+  const perguntaId = req.params.id;
+  const { minutagemPergunta } = req.body;
+
+  try {
+    // Verifica se a pergunta existe
+    const perguntaResult = await pool.query(
+      "SELECT * FROM perguntas WHERE id = $1",
+      [perguntaId]
+    );
+
+    if (perguntaResult.rows.length === 0) {
+      return res.status(404).json({ success: false, message: "Pergunta não encontrada" });
+    }
+
+    // Atualiza a minutagemPergunta da pergunta
+    await pool.query(
+      "UPDATE perguntas SET minutagemPergunta = $1 WHERE id = $2",
+      [minutagemPergunta, perguntaId]
+    );
+
+    res.status(200).json({ success: true, message: "Minutagem da pergunta atualizada com sucesso" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: "Erro interno do servidor" });
+  }
+});
 
 
+// 23 - EDITAR VIDEO LINK DE UM CONTEUDO
+app.put("/conteudos/:id/video", async (req, res) => {
+  const { id } = req.params;
+  const { videoConteudo } = req.body;
 
+  try {
+    const result = await pool.query(
+      "UPDATE conteudos SET videoConteudo = $1 WHERE id = $2 RETURNING *",
+      [videoConteudo, id]
+    );
 
+    if (result.rowCount === 0) {
+      return res.status(404).json({ success: false, message: "Conteúdo não encontrado" });
+    }
+
+    const updatedConteudo = result.rows[0];
+
+    res.status(200).json({ success: true, conteudo: updatedConteudo });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: "Erro interno do servidor" });
+  }
+});
+
+// 23 - QUESTIONARIO DE PERFIL
 app.post("/questionnaire-responses", async (req, res) => {
   const { respostas, userData } = req.body;
   const { email } = userData;
@@ -1078,6 +1029,7 @@ app.post("/questionnaire-responses", async (req, res) => {
   }
 });
 
+// 24 - PREFERENCIA DE ESTUDO
 app.get("/user-preference-study/:user_id", async (req, res) => {
   const { user_id } = req.params;
 
@@ -1125,10 +1077,7 @@ app.get("/user-preference-study/:user_id", async (req, res) => {
 });
 
 
-
-
-
-// MATERIAIS e VIDEOCONTEUDO
+// 25 - MATERIAIS de um CONTEUDO - manda videoConteudo se tiver
 app.get("/materiais/:conteudo_id", async (req, res) => {
   const { conteudo_id } = req.params;
 
@@ -1151,6 +1100,7 @@ app.get("/materiais/:conteudo_id", async (req, res) => {
   }
 });
 
+// 26 - ADICIONAR NOVO ESTUDO
 app.post("/adicionarEstudo", async (req, res) => {
   const { nome, descricao, link } = req.body;
 
@@ -1187,81 +1137,7 @@ app.post("/adicionarEstudo", async (req, res) => {
   }
 });
 
-app.get("/dias-seguidos-login", async (req, res) => {
-  const userId = req.query.userId; // Supondo que você tenha o ID do usuário
-
-  try {
-    const result = await pool.query(
-      "SELECT login_date FROM login_history WHERE user_id = $1 ORDER BY login_date DESC",
-      [userId]
-    );
-
-    if (result.rows.length === 0) {
-      // Se não houver registros de login para o usuário
-      return res.status(200).json({ diasSeguidos: 0 });
-    }
-
-    let diasSeguidos = 1;
-    const loginDates = result.rows.map((row) => row.login_date);
-
-    for (let i = 0; i < loginDates.length - 1; i++) {
-      const diffInDays = Math.floor(
-        (loginDates[i] - loginDates[i + 1]) / (1000 * 60 * 60 * 24)
-      );
-
-      if (diffInDays === 1) {
-        diasSeguidos++;
-      } else if (diffInDays > 1) {
-        break; // Interrompe a contagem se houver uma lacuna de mais de um dia
-      }
-    }
-
-    return res.status(200).json({ diasSeguidos });
-  } catch (error) {
-    console.error(error);
-    return res
-      .status(500)
-      .json({ success: false, message: "Internal server error" });
-  }
-});
-
-// Endpoint para adicionar novo conteúdo
-app.post("/adicionarConteudo", async (req, res) => {
-  const { titulo, descricao, estudo_id, pontos, materiais, tempomaximo, linkVideo  } = req.body;
-
-  try {
-    if (!titulo || !estudo_id || !tempomaximo) {
-      return res.status(400).json({
-        success: false,
-        message: "Título, ID do estudo e tempo máximo do questionário são obrigatórios",
-      });
-    }
-
-    // Verifique se o estudo associado ao conteúdo existe
-    const existingEstudo = await pool.query(
-      "SELECT * FROM estudos WHERE id = $1",
-      [estudo_id]
-    );
-    if (existingEstudo.rows.length === 0) {
-      return res
-        .status(400)
-        .json({ success: false, message: "O estudo associado não existe" });
-    }
-
-    // Insira o novo conteúdo na tabela conteudos
-    const result = await pool.query(
-      "INSERT INTO conteudos (titulo, descricao, estudo_id, pontos, materiais, videoconteudo, tempomaximo) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *",
-      [titulo, descricao, estudo_id, pontos, materiais, linkVideo, tempomaximo]
-    );
-
-    // Envie a resposta com os dados do novo conteúdo inserido
-    res.status(201).json(result.rows[0]);
-  } catch (error) {
-    console.error("Erro ao inserir novo conteúdo:", error);
-    res.status(500).json({ success: false, message: "Internal server error" });
-  }
-});
-
+// 27 - DIAS SEGUIDOS LOGADOS
 app.get("/user/:userId/days", async (req, res) => {
   const userId = req.params.userId;
 
@@ -1283,6 +1159,45 @@ app.get("/user/:userId/days", async (req, res) => {
   }
 });
 
+
+// 28 - ADICIONAR NOVO CONTEUDO
+app.post("/adicionarConteudo", async (req, res) => {
+  const { titulo, descricao, estudo_id, pontos, materiais, linkVideo  } = req.body;
+
+  try {
+    if (!titulo || !estudo_id) {
+      return res.status(400).json({
+        success: false,
+        message: "Título e ID do estudo do questionário são obrigatórios",
+      });
+    }
+
+    // Verifique se o estudo associado ao conteúdo existe
+    const existingEstudo = await pool.query(
+      "SELECT * FROM estudos WHERE id = $1",
+      [estudo_id]
+    );
+    if (existingEstudo.rows.length === 0) {
+      return res
+        .status(400)
+        .json({ success: false, message: "O estudo associado não existe" });
+    }
+
+    // Insira o novo conteúdo na tabela conteudos
+    const result = await pool.query(
+      "INSERT INTO conteudos (titulo, descricao, estudo_id, pontos, materiais, videoconteudo) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *",
+      [titulo, descricao, estudo_id, pontos, materiais, linkVideo]
+    );
+
+    // Envie a resposta com os dados do novo conteúdo inserido
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    console.error("Erro ao inserir novo conteúdo:", error);
+    res.status(500).json({ success: false, message: "Internal server error" });
+  }
+});
+
+// 29 - PERGUNTAS ERRADAS
 app.get("/perguntas-erradas/:user_id/:conteudo_id", async (req, res) => {
   const { user_id, conteudo_id } = req.params;
 
@@ -1307,6 +1222,114 @@ app.get("/perguntas-erradas/:user_id/:conteudo_id", async (req, res) => {
   }
 });
 
+// ================================ FUNÇÃO PARA CONQUISTAS: ================================
+
+// Verifica a quantidade de conclusões do usuário
+const verificaConquistas = async (user_id) => {
+  const resultConclusoes = await pool.query(
+    "SELECT COUNT(*) as quantidade FROM conclusoes WHERE user_id = $1",
+    [user_id]
+  );
+  const quantidadeConclusoes = resultConclusoes.rows[0].quantidade;
+
+  if (quantidadeConclusoes > 0) {
+    // Determina quais conquistas associar com base na quantidade de conclusões
+    const conquistasParaAdicionar = [];
+
+    if (quantidadeConclusoes >= 10) {
+      conquistasParaAdicionar.push(3); // ID da conquista "10 conteúdos concluídos"
+    }
+
+    if (quantidadeConclusoes >= 5) {
+      conquistasParaAdicionar.push(2); // ID da conquista "5 conteúdos concluídos"
+    }
+
+    if (quantidadeConclusoes >= 1) {
+      conquistasParaAdicionar.push(1); // ID da conquista "Primeiro conteúdo concluído"
+    }
+
+    // Insere as conquistas na tabela usuarios_conquistas
+    if (conquistasParaAdicionar.length > 0) {
+      const values = conquistasParaAdicionar
+        .map((conquistaId) => `(${user_id}, ${conquistaId})`)
+        .join(",");
+      await pool.query(
+        `INSERT INTO usuarios_conquistas (user_id, conquista_id) VALUES ${values} ON CONFLICT DO NOTHING`
+      );
+    }
+  }
+};
+
+function determinarEstudoIndicado(respostas) {
+  // Verifica se a resposta da pergunta 2 (preferência) contém 'javascript'
+  const preferenciaEstudo = respostas.find(
+    (resposta) => resposta.pergunta_id === 2
+  );
+
+  if (
+    preferenciaEstudo &&
+    Array.isArray(preferenciaEstudo.resposta_do_usuario) &&
+    preferenciaEstudo.resposta_do_usuario.length > 0
+  ) {
+    const respostaLowerCase = preferenciaEstudo.resposta_do_usuario.map(option => option.toLowerCase());
+
+    // Verifica se a resposta inclui 'javascript'
+    if (respostaLowerCase.includes("javascript")) {
+      // Verifica se a resposta inclui outras linguagens backend
+      if (["python", "java", "c#", "ruby", "php", "c++"].some(option => respostaLowerCase.includes(option))) {
+        // Retorna o ID do estudo de frontend e backend
+        return "1,2"; // IDs do estudo de backend e frontend
+      } else {
+        // Retorna apenas o ID do estudo de frontend
+        return "2"; // ID do estudo de frontend
+      }
+    } else if (["python", "java", "c#", "ruby", "php", "c++"].some(option => respostaLowerCase.includes(option))) {
+      // Retorna apenas o ID do estudo de backend
+      return "1"; // ID do estudo de backend
+    } else if (respostaLowerCase.includes("swift")) {
+      // Retorna o ID do estudo de mobile
+      return "5"; // ID do estudo de mobile
+    }
+  }
+
+  // Fallback para a pergunta 1 se a pergunta 2 não fornecer uma resposta válida
+  const experienciaEstudo = respostas.find(
+    (resposta) =>
+      resposta.pergunta_id === 1 &&
+      resposta.resposta_do_usuario !== "N/A"
+  );
+
+  if (experienciaEstudo) {
+    switch (experienciaEstudo.resposta_do_usuario.toLowerCase()) {
+      case "javascript":
+        // Verifica se a resposta da pergunta 1 inclui outras linguagens backend
+        if (["python", "java", "c#", "ruby", "php", "c++"].some(option => respostaLowerCase.includes(option))) {
+          // Retorna o ID do estudo de frontend e backend
+          return "1,2"; // IDs do estudo de backend e frontend
+        } else {
+          // Retorna apenas o ID do estudo de frontend
+          return "2"; // ID do estudo de frontend
+        }
+      case "python":
+      case "java":
+      case "c#":
+      case "ruby":
+      case "php":
+      case "c++":
+        // Retorna apenas o ID do estudo de backend
+        return "1"; // ID do estudo de backend
+      case "swift":
+        // Retorna o ID do estudo de mobile
+        return "5"; // ID do estudo de mobile
+      default:
+        // Se a resposta não corresponder a nenhuma opção conhecida, retorne um valor padrão
+        break;
+    }
+  }
+
+  // Se nenhuma resposta válida for encontrada nas perguntas 1 e 2, retorne um valor padrão
+  return "2"; // Valor padrão: ID do estudo de frontend
+}
 
 
 // EXTRA PARA UPLOADS DE IMAGENS
