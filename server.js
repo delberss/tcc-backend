@@ -1128,8 +1128,7 @@ app.get("/materiais/:conteudo_id", async (req, res) => {
 
 // 26 - ADICIONAR NOVO ESTUDO
 app.post("/adicionarEstudo", async (req, res) => {
-  const { nome, descricao, link } = req.body;
-
+  const { nome, descricao, linguagens, link } = req.body;
   try {
     if (!nome) {
       return res
@@ -1151,8 +1150,8 @@ app.post("/adicionarEstudo", async (req, res) => {
 
     // Insira o novo estudo na tabela estudos
     const result = await pool.query(
-      "INSERT INTO estudos (nome, descricao, link) VALUES ($1, $2, $3) RETURNING *",
-      [nome, descricao, link]
+      "INSERT INTO estudos (nome, descricao, link, linguagens) VALUES ($1, $2, $3, $4) RETURNING *",
+      [nome, descricao, link, linguagens]
     );
 
     // Envie a resposta com os dados do novo estudo inserido
