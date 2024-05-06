@@ -137,8 +137,6 @@ app.post("/login", async (req, res) => {
   let { emailOrUsername, password, userType } = req.body;
   userType = userType?.toLowerCase();
 
-  console.log(emailOrUsername)
-
   try {
     // Verificar se o emailOrUsername é um email ou um nome de usuário
     const isEmail = emailOrUsername.includes('@');
@@ -282,7 +280,12 @@ app.post("/register", async (req, res) => {
 app.get("/users", verifyToken, async (req, res) => {
   try {
     const result = await pool.query(
-      "SELECT user_id, name, email, profile_image_url, pontuacao_geral, tipo_usuario FROM users"
+      "SELECT u.user_id, u.name, u.email, u.profile_image_url, u.pontuacao_geral, u.tipo_usuario, lh.dias_seguidos, " +
+      "COUNT(c.conteudo_id) AS conclusoes " +
+      "FROM users u " +
+      "LEFT JOIN login_history lh ON u.user_id = lh.user_id " +
+      "LEFT JOIN conclusoes c ON u.user_id = c.user_id " +
+      "GROUP BY u.user_id, u.name, u.email, u.profile_image_url, u.pontuacao_geral, u.tipo_usuario, lh.dias_seguidos"
     );
     const users = result.rows;
 
@@ -292,6 +295,8 @@ app.get("/users", verifyToken, async (req, res) => {
       profile_image_url: user.profile_image_url,
       pontuacao_geral: user.pontuacao_geral,
       tipo_usuario: user.tipo_usuario,
+      dias_seguidos: user.dias_seguidos,
+      conclusoes: user.conclusoes
     }));
 
     res.status(200).json(sanitizedUsers);
@@ -969,7 +974,6 @@ app.put("/conteudos/:id/video", async (req, res) => {
 
 // 23 - QUESTIONARIO DE PERFIL
 app.post("/questionnaire-responses", async (req, res) => {
-  console.log(req.body)
   const { respostas, userData } = req.body;
   const { email, username } = userData;
 
