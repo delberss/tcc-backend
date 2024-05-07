@@ -84,6 +84,7 @@ const pool = new Pool({
 // );
 
 // INSERT INTO conquistas (nome_conquista, descricao) VALUES
+//     ('Medalha', 'Parabéns! Você já conquistou medalha de top 3.'),
 //     ('Primeiro conteúdo concluído', 'Parabéns! Primeiro conteúdo concluído.'),
 //     ('5 conteúdos concluídos', 'Parabéns! Você chegou a conclusão de 5 conteúdos.'),
 //     ('10 conteúdos concluídos', 'Parabéns! Você chegou a conclusão de 10 conteúdos.'),
