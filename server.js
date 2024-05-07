@@ -81,10 +81,11 @@ async function updateLoginHistoryAndScore(userId) {
     [userId]
   );
 
+  const ultimoLoginFormatado = pegaUltimoLogin.rows[0]?.login_date.toISOString()?.split('T')[0];
+
   let qtdDiasSeguidos = pegaUltimoLogin.rows[0]?.dias_seguidos || 0;
 
   if (pegaUltimoLogin.rows.length != 0) {
-    const ultimoLoginFormatado = pegaUltimoLogin.rows[0]?.login_date.toISOString()?.split('T')[0];
     const diasSeguidos = pegaUltimoLogin.rows[0].dias_seguidos;
 
     const ultimoAcessoOntem = (ultimoLoginFormatado === dataOntem.toISOString().split('T')[0]);
@@ -96,7 +97,7 @@ async function updateLoginHistoryAndScore(userId) {
         [dataDeHoje, diasSeguidos + 1, userId]
       );
     } else {
-      if(ultimoLoginFormatado !== dataDeHoje){
+      if (ultimoLoginFormatado !== dataDeHoje) {
         qtdDiasSeguidos = 1;
         await pool.query(
           "UPDATE login_history SET login_date = $1, dias_seguidos = $2 WHERE user_id = $3",
@@ -112,23 +113,25 @@ async function updateLoginHistoryAndScore(userId) {
     );
   }
 
-  // Atualizar pontuação geral do usuário com base nos dias seguidos
-  if (qtdDiasSeguidos === 3) {
-    await pool.query(
-      "UPDATE users SET pontuacao_geral = pontuacao_geral + 300 WHERE user_id = $1",
-      [userId]
-    );
-  } else if (qtdDiasSeguidos === 6) {
-    await pool.query(
-      "UPDATE users SET pontuacao_geral = pontuacao_geral + 600 WHERE user_id = $1",
-      [userId]
-    );
-  } else if (qtdDiasSeguidos === 10) {
-    await pool.query(
-      "UPDATE users SET pontuacao_geral = pontuacao_geral + 1000 WHERE user_id = $1",
-      [userId]
-    );
+  if(ultimoLoginFormatado != dataDeHoje){
+    if (qtdDiasSeguidos === 3) {
+      await pool.query(
+        "UPDATE users SET pontuacao_geral = pontuacao_geral + 300 WHERE user_id = $1",
+        [userId]
+      );
+    } else if (qtdDiasSeguidos === 6) {
+      await pool.query(
+        "UPDATE users SET pontuacao_geral = pontuacao_geral + 600 WHERE user_id = $1",
+        [userId]
+      );
+    } else if (qtdDiasSeguidos === 10) {
+      await pool.query(
+        "UPDATE users SET pontuacao_geral = pontuacao_geral + 1000 WHERE user_id = $1",
+        [userId]
+      );
+    }
   }
+ 
 }
 
 
@@ -281,13 +284,32 @@ app.get("/users", verifyToken, async (req, res) => {
   try {
     const result = await pool.query(
       "SELECT u.user_id, u.name, u.email, u.profile_image_url, u.pontuacao_geral, u.tipo_usuario, lh.dias_seguidos, " +
-      "COUNT(c.conteudo_id) AS conclusoes " +
+      "COUNT(uc.conquista_id) AS conquistas " +
       "FROM users u " +
       "LEFT JOIN login_history lh ON u.user_id = lh.user_id " +
-      "LEFT JOIN conclusoes c ON u.user_id = c.user_id " +
-      "GROUP BY u.user_id, u.name, u.email, u.profile_image_url, u.pontuacao_geral, u.tipo_usuario, lh.dias_seguidos"
+      "LEFT JOIN usuarios_conquistas uc ON u.user_id = uc.user_id " +
+      "WHERE u.name != 'Admin' " +
+      "GROUP BY u.user_id, u.name, u.email, u.profile_image_url, u.pontuacao_geral, u.tipo_usuario, lh.dias_seguidos " +
+      "ORDER BY u.pontuacao_geral DESC, COUNT(uc.conquista_id) DESC, u.name"
     );
     const users = result.rows;
+    const topUsers = result.rows.slice(0, 3); // Pegando os 3 primeiros usuários da lista
+
+    for (const user of topUsers) {
+      const userHasMedalha = await pool.query(
+        "SELECT * FROM usuarios_conquistas WHERE user_id = $1 AND conquista_id = 1",
+        [user.user_id]
+      );
+
+      if (userHasMedalha.rows.length === 0) {
+        // O usuário não possui a conquista 'Medalha', então conceda a conquista
+        const conquistaId = 1;
+        await pool.query(
+          `INSERT INTO usuarios_conquistas (user_id, conquista_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+          [user.user_id, conquistaId]
+        );
+      }
+    }
 
     const sanitizedUsers = users.map((user) => ({
       name: user.name,
@@ -296,7 +318,7 @@ app.get("/users", verifyToken, async (req, res) => {
       pontuacao_geral: user.pontuacao_geral,
       tipo_usuario: user.tipo_usuario,
       dias_seguidos: user.dias_seguidos,
-      conclusoes: user.conclusoes
+      conquistas: user.conquistas // Alterado de "conclusoes" para "conquistas"
     }));
 
     res.status(200).json(sanitizedUsers);
@@ -611,11 +633,11 @@ app.get("/historico-respostas", verifyToken, async (req, res) => {
   try {
     const result = await pool.query(
       "SELECT e.nome AS estudo, c.titulo AS conteudo_titulo, p.pergunta, r.resposta_do_usuario " +
-        "FROM respostas r " +
-        "JOIN perguntas p ON r.pergunta_id = p.id " +
-        "JOIN conteudos c ON p.conteudo_id = c.id " +
-        "JOIN estudos e ON c.estudo_id = e.id " +
-        "WHERE r.user_id = $1",
+      "FROM respostas r " +
+      "JOIN perguntas p ON r.pergunta_id = p.id " +
+      "JOIN conteudos c ON p.conteudo_id = c.id " +
+      "JOIN estudos e ON c.estudo_id = e.id " +
+      "WHERE r.user_id = $1",
       [user_id]
     );
 
@@ -771,9 +793,9 @@ app.get("/conquistas-usuario/:user_id", async (req, res) => {
   try {
     const result = await pool.query(
       "SELECT c.nome_conquista, c.descricao " +
-        "FROM usuarios_conquistas uc " +
-        "JOIN conquistas c ON uc.conquista_id = c.id " +
-        "WHERE uc.user_id = $1",
+      "FROM usuarios_conquistas uc " +
+      "JOIN conquistas c ON uc.conquista_id = c.id " +
+      "WHERE uc.user_id = $1",
       [user_id]
     );
 
@@ -876,7 +898,7 @@ app.put("/pergunta/:id", verifyToken, async (req, res) => {
     }
 
     // Atualizar os detalhes da pergunta
-    if(resposta_correta){
+    if (resposta_correta) {
       await pool.query(
         "UPDATE perguntas SET pergunta = $1, opcao_a = $2, opcao_b = $3, opcao_c = $4, opcao_d = $5, resposta_correta = $6, minutagemPergunta = $7 WHERE id = $8",
         [
@@ -890,7 +912,7 @@ app.put("/pergunta/:id", verifyToken, async (req, res) => {
           perguntaId,
         ]
       );
-    } else{
+    } else {
       await pool.query(
         "UPDATE perguntas SET pergunta = $1, opcao_a = $2, opcao_b = $3, opcao_c = $4, opcao_d = $5, minutagemPergunta = $6 WHERE id = $7",
         [
@@ -904,7 +926,7 @@ app.put("/pergunta/:id", verifyToken, async (req, res) => {
         ]
       );
     }
-   
+
 
     res.status(200).json({
       success: true,
@@ -1009,7 +1031,7 @@ app.post("/questionnaire-responses", async (req, res) => {
         [username.toLowerCase()]
       );
     }
-    
+
 
     if (userResult.rows.length === 0) {
       return res
@@ -1187,7 +1209,7 @@ app.get("/user/:userId/days", async (req, res) => {
 
 // 28 - ADICIONAR NOVO CONTEUDO
 app.post("/adicionarConteudo", async (req, res) => {
-  const { titulo, descricao, estudo_id, pontos, materiais, linkVideo  } = req.body;
+  const { titulo, descricao, estudo_id, pontos, materiais, linkVideo } = req.body;
 
   try {
     if (!titulo || !estudo_id) {
@@ -1236,7 +1258,7 @@ app.get("/perguntas-erradas/:user_id/:conteudo_id", async (req, res) => {
       AND p.conteudo_id = $2
       AND r.resposta_correta = FALSE
     `;
-    
+
     const { rows } = await pool.query(query, [user_id, conteudo_id]);
 
     // Retornando as perguntas que o usuário errou
@@ -1262,15 +1284,15 @@ const verificaConquistas = async (user_id) => {
     const conquistasParaAdicionar = [];
 
     if (quantidadeConclusoes >= 10) {
-      conquistasParaAdicionar.push(3); // ID da conquista "10 conteúdos concluídos"
+      conquistasParaAdicionar.push(4); // ID da conquista "10 conteúdos concluídos"
     }
 
     if (quantidadeConclusoes >= 5) {
-      conquistasParaAdicionar.push(2); // ID da conquista "5 conteúdos concluídos"
+      conquistasParaAdicionar.push(3); // ID da conquista "5 conteúdos concluídos"
     }
 
     if (quantidadeConclusoes >= 1) {
-      conquistasParaAdicionar.push(1); // ID da conquista "Primeiro conteúdo concluído"
+      conquistasParaAdicionar.push(2); // ID da conquista "Primeiro conteúdo concluído"
     }
 
     // Insere as conquistas na tabela usuarios_conquistas
