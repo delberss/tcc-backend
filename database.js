@@ -10,21 +10,21 @@ const { Pool } = require("pg");
 // });
 
 
-// const pool = new Pool({
-//     user: "postgres",
-//     password: "qOMbZKJbvRtKMfnOWFJWVVPZBXtNeiDz",
-//     host: "monorail.proxy.rlwy.net",
-//     port: 12524,
-//     database: "railway"
-// });
-
 const pool = new Pool({
     user: "postgres",
-    password: "admin",
-    host: "localhost",
-    port: 5432,
-    database: "tcc-local"
+    password: "XQJnSnTAVCerFsgiRVCFiVYvFsqJTSrv",
+    host: "viaduct.proxy.rlwy.net",
+    port: 24985,
+    database: "railway"
 });
+
+// const pool = new Pool({
+//     user: "postgres",
+//     password: "admin",
+//     host: "localhost",
+//     port: 5432,
+//     database: "tcc-local"
+// });
 
 
 // const createTableQuery = `CREATE TABLE users (...
@@ -380,19 +380,11 @@ const pool = new Pool({
 
 
 // 8 - TABELA questionnaire_responses
-// CREATE TABLE questionnaire_responses (
-//     response_id SERIAL PRIMARY KEY,
-//     user_id INTEGER REFERENCES users(user_id),
-//     question1 BOOLEAN,
-//     question2 BOOLEAN,
-//     question3 BOOLEAN,
-//     created_at TIMESTAMP
-// );
 
 // CREATE TABLE questionnaire_responses (
 //     response_id SERIAL PRIMARY KEY,
 //     user_id INTEGER REFERENCES users(user_id),
-//     question1 TEXT,  -- Alterado para TEXT para armazenar múltiplas opções como uma string CSV
+//     question1 TEXT,
 //     question2 TEXT,
 //     question3 TEXT,
 //     created_at TIMESTAMP
