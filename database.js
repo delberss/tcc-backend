@@ -12,9 +12,9 @@ const { Pool } = require("pg");
 
 const pool = new Pool({
     user: "postgres",
-    password: "XQJnSnTAVCerFsgiRVCFiVYvFsqJTSrv",
-    host: "viaduct.proxy.rlwy.net",
-    port: 24985,
+    password: "MKgcltKhvKeglQIzpMDlGNDvIDKwPTeQ",
+    host: "roundhouse.proxy.rlwy.net",
+    port: 19142,
     database: "railway"
 });
 
@@ -291,21 +291,6 @@ const pool = new Pool({
 //     opcao_d = 'JavaScript',
 //     resposta_correta = 'D'
 // WHERE conteudo_id = 1 and id= 1;
-
-
-// ============ BACKEND ===================
-
-// INSERT INTO perguntas (pergunta, conteudo_id, opcao_a, opcao_b, opcao_c, opcao_d, resposta_correta) VALUES
-//     ('Qual é a principal característica do Node.js?', 1, 'Assíncrono', 'Síncrono', 'Monolítico', 'Modular', 'A');
-
-// INSERT INTO perguntas (pergunta, conteudo_id, opcao_a, opcao_b, opcao_c, opcao_d, resposta_correta) VALUES
-//     ('Qual módulo é utilizado para criar um servidor HTTP no Node.js?', 1, 'http', 'fs', 'express', 'path', 'C');
-
-// INSERT INTO perguntas (pergunta, conteudo_id, opcao_a, opcao_b, opcao_c, opcao_d, resposta_correta) VALUES
-//     ('O que é o npm?', 1, 'Node Package Manager', 'Node Project Manager', 'Node Package Module', 'Node Project Module', 'A');
-
-// INSERT INTO perguntas (pergunta, conteudo_id, opcao_a, opcao_b, opcao_c, opcao_d, resposta_correta) VALUES
-//     ('Qual método é usado para ler dados de um formulário em uma aplicação Express.js?', 1, 'GET', 'POST', 'PUT', 'DELETE', 'B');
 
 
 // ============ FRONTEND ===================
