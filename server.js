@@ -994,6 +994,34 @@ app.put("/conteudos/:id/video", async (req, res) => {
   }
 });
 
+// ROTA PARA ATUALIZAR MATERIAIS ADICIONAIS DE UM CONTEÚDO
+app.put("/conteudos/:id/materiais", async (req, res) => {
+  const { id } = req.params;
+  const { materiais } = req.body;
+
+  console.log(id);
+  console.log(materiais);
+
+  try {
+    const result = await pool.query(
+      "UPDATE conteudos SET materiais = $1 WHERE id = $2 RETURNING *",
+      [materiais, id]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ success: false, message: "Conteúdo não encontrado" });
+    }
+
+    const updatedConteudo = result.rows[0];
+
+    res.status(200).json({ success: true, conteudo: updatedConteudo });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: "Erro interno do servidor" });
+  }
+});
+
+
 // 23 - QUESTIONARIO DE PERFIL
 app.post("/questionnaire-responses", async (req, res) => {
   const { respostas, userData } = req.body;
