@@ -515,7 +515,7 @@ app.post("/respostas", verifyToken, async (req, res) => {
 
   try {
     const conclusoes = {}; // Armazenar conclusões para evitar pontuações duplicadas
-    let todasCorretas = true; // Flag para verificar se todas as respostas estão corretas
+    let totalPerguntas = respostas.length; // Total de perguntas respondidas
     let respostasCorretas = 0; // Contador de respostas corretas
 
     await Promise.all(
@@ -532,8 +532,6 @@ app.post("/respostas", verifyToken, async (req, res) => {
           const acertou =
             resposta_do_usuario.toUpperCase() ===
             resposta_correta.toUpperCase();
-
-          todasCorretas = todasCorretas && acertou; // Atualiza a flag com o resultado da pergunta
 
           // Se a resposta estiver correta, incrementa o contador
           if (acertou) {
@@ -556,8 +554,11 @@ app.post("/respostas", verifyToken, async (req, res) => {
       })
     );
 
-    // Verifica se todas as respostas estão corretas antes de conceder pontos e conclusão
-    if (todasCorretas) {
+    // Calcular a porcentagem de respostas corretas
+    const porcentagemCorretas = (respostasCorretas / totalPerguntas) * 100;
+
+    // Verifica se a porcentagem de respostas corretas é 75% ou mais
+    if (porcentagemCorretas >= 60) {
       await Promise.all(
         Object.keys(conclusoes).map(async (conteudo_id) => {
           // Atualiza a pontuação geral do usuário com os pontos do conteúdo, tratando null como 0
@@ -577,7 +578,7 @@ app.post("/respostas", verifyToken, async (req, res) => {
       );
     }
 
-    res.status(200).json({ success: true, respostasCorretas }); // Retorna a quantidade de respostas corretas
+    res.status(200).json({ success: true, respostasCorretas, porcentagemCorretas }); // Retorna a quantidade e porcentagem de respostas corretas
   } catch (error) {
     console.error(error);
     res
@@ -746,11 +747,12 @@ app.get("/conteudos-concluidos/:user_id", async (req, res) => {
 app.get("/conquistas", async (req, res) => {
   try {
     const result = await pool.query(
-      "SELECT nome_conquista, descricao FROM conquistas"
+      "SELECT id, nome_conquista, descricao FROM conquistas"
     );
 
     // Map the result rows to an array of achievements
     const conquistas = result.rows.map((row) => ({
+      id: row.id,
       nome_conquista: row.nome_conquista,
       descricao: row.descricao,
     }));
@@ -998,9 +1000,6 @@ app.put("/conteudos/:id/video", async (req, res) => {
 app.put("/conteudos/:id/materiais", async (req, res) => {
   const { id } = req.params;
   const { materiais } = req.body;
-
-  console.log(id);
-  console.log(materiais);
 
   try {
     const result = await pool.query(
@@ -1409,6 +1408,7 @@ function determinarEstudoIndicado(respostas) {
 
 // EXTRA PARA UPLOADS DE IMAGENS
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+
 
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
