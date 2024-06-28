@@ -580,7 +580,7 @@ app.post("/respostas", verifyToken, async (req, res) => {
               [user_id, conteudo_id]
             );
 
-            verificaConquistas(user_id);
+            verificaConquistas(user_id, conteudo_id);
           }
         })
       );
@@ -1305,38 +1305,94 @@ app.get("/perguntas-erradas/:user_id/:conteudo_id", async (req, res) => {
 // ================================ FUNÇÃO PARA CONQUISTAS: ================================
 
 // Verifica a quantidade de conclusões do usuário
-const verificaConquistas = async (user_id) => {
+const verificaConquistas = async (user_id, conteudo_id) => {
+  // Obter o estudo_id do conteudo_id fornecido
+  const resultEstudo = await pool.query(
+    "SELECT estudo_id FROM conteudos WHERE id = $1",
+    [conteudo_id]
+  );
+  
+  if (resultEstudo.rows.length === 0) {
+    // Conteúdo não encontrado, você pode lidar com isso se necessário
+    return;
+  }
+
+  const estudo_id = resultEstudo.rows[0].estudo_id;
+
+  // Obter o nome do estudo
+  const resultNomeEstudo = await pool.query(
+    "SELECT nome FROM estudos WHERE id = $1",
+    [estudo_id]
+  );
+
+  const nomeEstudo = resultNomeEstudo.rows.length > 0 ? resultNomeEstudo.rows[0].nome.toLowerCase() : '';
+
+  console.log("NOME DO ESTUDO = ", nomeEstudo);
+
+  // Contar o número total de conteúdos com o mesmo estudo_id
+  const resultConteudosDoEstudo = await pool.query(
+    "SELECT COUNT(*) as total FROM conteudos WHERE estudo_id = $1",
+    [estudo_id]
+  );
+  
+  const quantidadeDeConteudoDoEstudo = resultConteudosDoEstudo.rows[0].total;
+
+  // Contar quantos desses conteúdos o user_id já concluiu
   const resultConclusoes = await pool.query(
+    "SELECT COUNT(*) as quantidade FROM conclusoes WHERE user_id = $1 AND conteudo_id IN (SELECT id FROM conteudos WHERE estudo_id = $2)",
+    [user_id, estudo_id]
+  );
+
+  const quantidadeConclusoes = resultConclusoes.rows[0].quantidade;
+
+  if (quantidadeConclusoes == quantidadeDeConteudoDoEstudo) {
+    // O usuário concluiu todos os conteúdos deste estudo_id, atribua a conquista
+    let conquistaId;
+    if (nomeEstudo === 'backend') {
+      conquistaId = 5; // ID da conquista "Estudo completo - Backend"
+    } else if (nomeEstudo === 'frontend') {
+      conquistaId = 6; // ID da conquista "Estudo completo - Frontend"
+    } else if (nomeEstudo === 'database') {
+      conquistaId = 7; // ID da conquista "Estudo completo - Database"
+    }
+
+    if (conquistaId) {
+      await pool.query(
+        "INSERT INTO usuarios_conquistas (user_id, conquista_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",
+        [user_id, conquistaId]
+      );
+    }
+  }
+
+  // Verificar e adicionar outras conquistas baseadas na quantidade total de conclusões
+  const resultTotalConclusoes = await pool.query(
     "SELECT COUNT(*) as quantidade FROM conclusoes WHERE user_id = $1",
     [user_id]
   );
-  const quantidadeConclusoes = resultConclusoes.rows[0].quantidade;
+  const totalConclusoes = resultTotalConclusoes.rows[0].quantidade;
 
-  if (quantidadeConclusoes > 0) {
-    // Determina quais conquistas associar com base na quantidade de conclusões
-    const conquistasParaAdicionar = [];
+  const conquistasParaAdicionar = [];
 
-    if (quantidadeConclusoes >= 10) {
-      conquistasParaAdicionar.push(4); // ID da conquista "10 conteúdos concluídos"
-    }
+  if (totalConclusoes >= 10) {
+    conquistasParaAdicionar.push(4); // ID da conquista "10 conteúdos concluídos"
+  }
 
-    if (quantidadeConclusoes >= 5) {
-      conquistasParaAdicionar.push(3); // ID da conquista "5 conteúdos concluídos"
-    }
+  if (totalConclusoes >= 5) {
+    conquistasParaAdicionar.push(3); // ID da conquista "5 conteúdos concluídos"
+  }
 
-    if (quantidadeConclusoes >= 1) {
-      conquistasParaAdicionar.push(2); // ID da conquista "Primeiro conteúdo concluído"
-    }
+  if (totalConclusoes >= 1) {
+    conquistasParaAdicionar.push(2); // ID da conquista "Primeiro conteúdo concluído"
+  }
 
-    // Insere as conquistas na tabela usuarios_conquistas
-    if (conquistasParaAdicionar.length > 0) {
-      const values = conquistasParaAdicionar
-        .map((conquistaId) => `(${user_id}, ${conquistaId})`)
-        .join(",");
-      await pool.query(
-        `INSERT INTO usuarios_conquistas (user_id, conquista_id) VALUES ${values} ON CONFLICT DO NOTHING`
-      );
-    }
+  // Insere as conquistas na tabela usuarios_conquistas
+  if (conquistasParaAdicionar.length > 0) {
+    const values = conquistasParaAdicionar
+      .map((conquistaId) => `(${user_id}, ${conquistaId})`)
+      .join(",");
+    await pool.query(
+      `INSERT INTO usuarios_conquistas (user_id, conquista_id) VALUES ${values} ON CONFLICT DO NOTHING`
+    );
   }
 };
 
