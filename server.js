@@ -557,23 +557,31 @@ app.post("/respostas", verifyToken, async (req, res) => {
     // Calcular a porcentagem de respostas corretas
     const porcentagemCorretas = (respostasCorretas / totalPerguntas) * 100;
 
-    // Verifica se a porcentagem de respostas corretas é 75% ou mais
+    // Verifica se a porcentagem de respostas corretas é 60% ou mais
     if (porcentagemCorretas >= 60) {
       await Promise.all(
         Object.keys(conclusoes).map(async (conteudo_id) => {
-          // Atualiza a pontuação geral do usuário com os pontos do conteúdo, tratando null como 0
-          await pool.query(
-            "UPDATE users SET pontuacao_geral = pontuacao_geral + COALESCE((SELECT pontos FROM conteudos WHERE id = $1), 0) WHERE user_id = $2",
-            [conteudo_id, user_id]
-          );
-
-          // Insere a conclusão se não existir
-          await pool.query(
-            "INSERT INTO conclusoes (user_id, conteudo_id) VALUES ($1, $2) ON CONFLICT (user_id, conteudo_id) DO NOTHING",
+          // Verifica se o user_id não tem o conteudo_id na tabela conclusoes
+          const conclusaoResult = await pool.query(
+            "SELECT 1 FROM conclusoes WHERE user_id = $1 AND conteudo_id = $2",
             [user_id, conteudo_id]
           );
 
-          verificaConquistas(user_id);
+          if (conclusaoResult.rows.length === 0) {
+            // Atualiza a pontuação geral do usuário com os pontos do conteúdo, tratando null como 0
+            await pool.query(
+              "UPDATE users SET pontuacao_geral = pontuacao_geral + COALESCE((SELECT pontos FROM conteudos WHERE id = $1), 0) WHERE user_id = $2",
+              [conteudo_id, user_id]
+            );
+
+            // Insere a conclusão se não existir
+            await pool.query(
+              "INSERT INTO conclusoes (user_id, conteudo_id) VALUES ($1, $2) ON CONFLICT (user_id, conteudo_id) DO NOTHING",
+              [user_id, conteudo_id]
+            );
+
+            verificaConquistas(user_id);
+          }
         })
       );
     }
@@ -581,9 +589,7 @@ app.post("/respostas", verifyToken, async (req, res) => {
     res.status(200).json({ success: true, respostasCorretas, porcentagemCorretas }); // Retorna a quantidade e porcentagem de respostas corretas
   } catch (error) {
     console.error(error);
-    res
-      .status(500)
-      .json({ success: false, message: "Erro interno do servidor" });
+    res.status(500).json({ success: false, message: "Erro interno do servidor" });
   }
 });
 
