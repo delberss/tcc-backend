@@ -1346,6 +1346,7 @@ const verificaConquistas = async (user_id, conteudo_id) => {
   const quantidadeConclusoes = resultConclusoes.rows[0].quantidade;
 
   if (quantidadeConclusoes == quantidadeDeConteudoDoEstudo) {
+    console.log('entrou')
     // O usuário concluiu todos os conteúdos deste estudo_id, atribua a conquista
     let conquistaId;
     if (nomeEstudo === 'backend') {
@@ -1354,6 +1355,8 @@ const verificaConquistas = async (user_id, conteudo_id) => {
       conquistaId = 6; // ID da conquista "Estudo completo - Frontend"
     } else if (nomeEstudo === 'database') {
       conquistaId = 7; // ID da conquista "Estudo completo - Database"
+    } else if(nomeEstudo === 'algoritmos'){
+      conquistaId = 11;
     }
 
     if (conquistaId) {
@@ -1414,17 +1417,17 @@ function determinarEstudoIndicado(respostas) {
       // Verifica se a resposta inclui outras linguagens backend
       if (["python", "java", "c#", "ruby", "php", "c++"].some(option => respostaLowerCase.includes(option))) {
         // Retorna o ID do estudo de frontend e backend
-        return "1,2"; // IDs do estudo de backend e frontend
+        return "7,1,2"; // IDs do estudo de backend e frontend
       } else {
         // Retorna apenas o ID do estudo de frontend
-        return "2"; // ID do estudo de frontend
+        return "7,2"; // ID do estudo de frontend
       }
     } else if (["python", "java", "c#", "ruby", "php", "c++"].some(option => respostaLowerCase.includes(option))) {
       // Retorna apenas o ID do estudo de backend
-      return "1"; // ID do estudo de backend
+      return "7,1"; // ID do estudo de backend
     } else if (respostaLowerCase.includes("swift")) {
       // Retorna o ID do estudo de mobile
-      return "5"; // ID do estudo de mobile
+      return "7,5"; // ID do estudo de mobile
     }
   }
 
@@ -1441,10 +1444,10 @@ function determinarEstudoIndicado(respostas) {
         // Verifica se a resposta da pergunta 1 inclui outras linguagens backend
         if (["python", "java", "c#", "ruby", "php", "c++"].some(option => respostaLowerCase.includes(option))) {
           // Retorna o ID do estudo de frontend e backend
-          return "1,2"; // IDs do estudo de backend e frontend
+          return "7,1,2"; // IDs do estudo de backend e frontend
         } else {
           // Retorna apenas o ID do estudo de frontend
-          return "2"; // ID do estudo de frontend
+          return "7,2"; // ID do estudo de frontend
         }
       case "python":
       case "java":
@@ -1453,10 +1456,10 @@ function determinarEstudoIndicado(respostas) {
       case "php":
       case "c++":
         // Retorna apenas o ID do estudo de backend
-        return "1"; // ID do estudo de backend
+        return "7,1"; // ID do estudo de backend
       case "swift":
         // Retorna o ID do estudo de mobile
-        return "5"; // ID do estudo de mobile
+        return "7,5"; // ID do estudo de mobile
       default:
         // Se a resposta não corresponder a nenhuma opção conhecida, retorne um valor padrão
         break;
@@ -1464,7 +1467,7 @@ function determinarEstudoIndicado(respostas) {
   }
 
   // Se nenhuma resposta válida for encontrada nas perguntas 1 e 2, retorne um valor padrão
-  return "2"; // Valor padrão: ID do estudo de frontend
+  return "7,2"; // Valor padrão: ID do estudo de frontend
 }
 
 // verifica resposta correta
