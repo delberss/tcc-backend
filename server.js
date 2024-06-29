@@ -1467,6 +1467,26 @@ function determinarEstudoIndicado(respostas) {
   return "2"; // Valor padrão: ID do estudo de frontend
 }
 
+// verifica resposta correta
+app.get('/verificarResposta', async (req, res) => {
+  const { idPergunta, respostaUsuario } = req.query;
+
+  try {
+    const result = await pool.query('SELECT resposta_correta FROM perguntas WHERE id = $1', [idPergunta]);
+    const respostaCorreta = result.rows[0].resposta_correta;
+
+    if (!respostaCorreta) {
+      return res.status(404).json({ success: false, message: 'Pergunta não encontrada' });
+    }
+
+    const isCorrect = respostaUsuario === respostaCorreta;
+    res.status(200).json({ success: true, isCorrect });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
+
 
 // EXTRA PARA UPLOADS DE IMAGENS
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
