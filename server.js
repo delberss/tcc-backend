@@ -129,6 +129,12 @@ async function updateLoginHistoryAndScore(userId) {
         "UPDATE users SET pontuacao_geral = pontuacao_geral + 1000 WHERE user_id = $1",
         [userId]
       );
+    } else if (qtdDiasSeguidos > 10) {
+      const pontosExtras = 100 * (qtdDiasSeguidos - 10); // Calcula os pontos adicionais a partir do 11º dia consecutivo
+      await pool.query(
+        "UPDATE users SET pontuacao_geral = pontuacao_geral + $1 WHERE user_id = $2",
+        [pontosExtras, userId]
+      );
     }
   }
  
