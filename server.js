@@ -1441,11 +1441,23 @@ function determinarEstudoIndicado(respostas) {
   const experienciaEstudo = respostas.find(
     (resposta) =>
       resposta.pergunta_id === 1 &&
-      resposta.resposta_do_usuario !== "N/A"
+      resposta.resposta_do_usuario !== "N/A" &&
+      resposta.resposta_do_usuario !== ""
   );
 
-  if (experienciaEstudo) {
-    switch (experienciaEstudo.resposta_do_usuario.toLowerCase()) {
+  if (experienciaEstudo && experienciaEstudo.resposta_do_usuario !== "N/A") {
+    let respostaLowerCase;
+    
+    if (Array.isArray(experienciaEstudo.resposta_do_usuario)) {
+      respostaLowerCase = experienciaEstudo.resposta_do_usuario.map(option => option.toLowerCase());
+    } else if (typeof experienciaEstudo.resposta_do_usuario === 'string') {
+      respostaLowerCase = [experienciaEstudo.resposta_do_usuario.toLowerCase()];
+    } else {
+      // Tratar outros tipos de resposta_do_usuario, se necessário
+      respostaLowerCase = [];
+    }
+
+    switch (respostaLowerCase[0]) {
       case "javascript":
         // Verifica se a resposta da pergunta 1 inclui outras linguagens backend
         if (["python", "java", "c#", "ruby", "php", "c++"].some(option => respostaLowerCase.includes(option))) {
