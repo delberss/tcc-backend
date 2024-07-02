@@ -1,15 +1,6 @@
 const { Pool } = require("pg");
 
 
-// const pool = new Pool({
-//     user: "postgres",
-//     password: "qOMbZKJbvRtKMfnOWFJWVVPZBXtNeiDz",
-//     host: "monorail.proxy.rlwy.net",
-//     port: 12524,
-//     database: "railway"
-// });
-
-
 const pool = new Pool({
     user: "postgres",
     password: "MKgcltKhvKeglQIzpMDlGNDvIDKwPTeQ",
@@ -30,14 +21,6 @@ const pool = new Pool({
 // const createTableQuery = `CREATE TABLE users (...
 // const insertEstudoQuery = `INSERT ...
 
-// CREATE TABLE login_history (
-//     login_id SERIAL PRIMARY KEY,
-//     user_id INTEGER REFERENCES users(user_id),
-//     login_date DATE NOT NULL,
-//      dias_seguidos INTEGER,
-
-// ALTER TABLE login_history ADD COLUMN dias_seguidos INTEGER;
-
 
 // CREATE TABLE login_history (
 //     login_id SERIAL PRIMARY KEY,
@@ -54,25 +37,16 @@ const pool = new Pool({
 //     user_id SERIAL PRIMARY KEY,
 //     name VARCHAR(50) NOT NULL,
 //     email VARCHAR(50) UNIQUE NOT NULL,
-//     password VARCHAR(255) NOT NULL,
+//     password V'ARCHAR(255) NOT NULL,
 //     profile_image_url VARCHAR(255),
 //     pontuacao_geral INTEGER,
-//     preferencia_estudo INTEGER,
-//     tipo_usuario VARCHAR(10) NOT NULL DEFAULT 'estudante'
+//     preferencias_estudo VARCHAR(255),
+//     tipo_usuario VARCHAR(10) NOT NULL DEFAULT 'estudante',
+//     username VARCHAR(50) UNIQUE
 // );
-
-
-// ALTER TABLE users
-// ADD COLUMN preferencias_estudo VARCHAR(255);
-
-// ALTER TABLE users
-// ADD COLUMN username VARCHAR(50) UNIQUE;
-
-
 // CREATE EXTENSION IF NOT EXISTS pgcrypto;
-
-// INSERT INTO users (name, email, password, pontuacao_geral, tipo_usuario)
-// VALUES ('Admin', 'admin@admin', crypt('admin', gen_salt('bf')), 0, 'admin');
+// INSERT INTO users (name, email, password, pontuacao_geral, tipo_usuario, username)
+// VALUES ('Admin', 'admin@admin', crypt('admin', gen_salt('bf')), 0, 'admin', 'admin')
 
 
 
@@ -88,14 +62,14 @@ const pool = new Pool({
 //     ('Primeiro conteúdo concluído', 'Parabéns! Primeiro conteúdo concluído.'),
 //     ('5 conteúdos concluídos', 'Parabéns! Você chegou a conclusão de 5 conteúdos.'),
 //     ('10 conteúdos concluídos', 'Parabéns! Você chegou a conclusão de 10 conteúdos.'),
-//     ('Estudo Backend', 'Incrível! Você completou o estudo de Backend.'),
+//      ('Estudo Backend', 'Incrível! Você completou o estudo de Backend.'),
 //     ('Estudo Frontend', 'Incrível! Você completou o estudo de Frontend.'),
 //     ('Estudo Database', 'Incrível! Você completou o estudo de Database.'),
 //     ('Estudo Devops', 'Incrível! Você completou o estudo de Devops.'),
 //     ('Estudo Mobile', 'Incrível! Você completou o estudo de Mobile.'),
-//     ('Estudo UX e Design', 'Incrível! Você completou o estudo de UX e Design.');
-
-
+//     ('Estudo UX e Design', 'Incrível! Você completou o estudo de UX e Design.'),
+//      ('Estudo Algoritmos', 'Incrível! Você completou o estudo de Algoritmos.')
+// ===============================================
 
 // 3 - TABELA usuarios_conquistas 
 // CREATE TABLE usuarios_conquistas (
@@ -112,26 +86,14 @@ const pool = new Pool({
 //     id SERIAL PRIMARY KEY,
 //     nome VARCHAR(255) NOT NULL,
 //     descricao TEXT,
-//     link VARCHAR(255)
+//     link VARCHAR(255),
+//     linguagens VARCHAR(255)[] DEFAULT '{}'::VARCHAR[]
 // );
-
-// ALTER TABLE estudos 
-// ADD COLUMN linguagens VARCHAR(255)[] DEFAULT '{}'::VARCHAR[];
-
-
-
-// INSERT INTO estudos (nome, descricao, link) VALUES
-//     ('Backend', 'Estudo sobre o desenvolvimento de servidores, APIs e lógica de aplicativos.', 'https://roadmap.sh/backend'),
-//     ('Frontend', 'Estudo sobre o desenvolvimento da interface do usuário em aplicações web.', 'https://roadmap.sh/frontend'),
-//     ('Database', 'Estudo sobre modelagem, otimização e administração de bancos de dados.', 'https://roadmap.sh/postgresql-dba'),
-//     ('Devops E Automação De Infraestrutura', 'Estudo sobre práticas DevOps, automação de infraestrutura e integração contínua/desenvolvimento contínuo (CI/CD).', 'https://roadmap.sh/devops'),
-//     ('Mobile', 'Estudo sobre desenvolvimento de aplicativos móveis para dispositivos iOS e Android.', 'https://roadmap.sh/android'),
-//     ('UX e Design', 'Estudo sobre design de experiência do usuário (UX), interfaces de usuário (UI) e princípios de design.', 'https://roadmap.sh/ux-design');
 
 
 // INSERT INTO estudos (nome, descricao, link, linguagens) 
 // VALUES 
-//     ('Backend', 'Estudo sobre o desenvolvimento de servidores, APIs e lógica de aplicativos.', 'https://roadmap.sh/backend', ARRAY['Java', 'Python']),
+//     ('Backend', 'Estudo sobre o desenvolvimento de servidores, APIs e lógica de aplicativos.', 'https://roadmap.sh/backend', ARRAY['Java', 'Python', 'C#', 'Ruby']),
 //     ('Frontend', 'Estudo sobre o desenvolvimento da interface do usuário em aplicações web.', 'https://roadmap.sh/frontend', ARRAY['JavaScript', 'HTML', 'CSS']),
 //     ('Database', 'Estudo sobre modelagem, otimização e administração de bancos de dados.', 'https://roadmap.sh/postgresql-dba', ARRAY['SQL']),
 //     ('Devops E Automação De Infraestrutura', 'Estudo sobre práticas DevOps, automação de infraestrutura e integração contínua/desenvolvimento contínuo (CI/CD).', 'https://roadmap.sh/devops', ARRAY['Bash', 'Python']),
@@ -139,17 +101,11 @@ const pool = new Pool({
 //     ('UX e Design', 'Estudo sobre design de experiência do usuário (UX), interfaces de usuário (UI) e princípios de design.', 'https://roadmap.sh/ux-design', ARRAY['UI/UX Design', 'Adobe XD']);
 
 
-// -- Atualiza os registros existentes na tabela 'estudos' com as novas linguagens
-// UPDATE estudos
-// SET linguagens = CASE
-//     WHEN nome = 'Backend' THEN ARRAY['Java', 'Python', 'C#', 'Ruby']
-//     WHEN nome = 'Frontend' THEN ARRAY['JavaScript', 'HTML', 'CSS']
-//     WHEN nome = 'Database' THEN ARRAY['SQL']
-//     WHEN nome = 'Devops E Automação De Infraestrutura' THEN ARRAY['Bash', 'Python']
-//     WHEN nome = 'Mobile' THEN ARRAY['Java', 'Kotlin', 'Swift']
-//     WHEN nome = 'UX e Design' THEN ARRAY['UI/UX Design']
-//     ELSE linguagens
-// END;
+// PARA O ESTUDO DE CASO - ALGORITOMOS:
+
+// INSERT INTO estudos (nome, descricao, link, linguagens) 
+// VALUES 
+//     ('Algoritmos', 'Estudo sobre algoritmos básicos, incluindo conceitos e implementações fundamentais.', 'https://www.dio.me/articles/roadmap-de-logica-de-programacao-navegando-pelo-caminho-para-dominar-os-fundamentos', ARRAY['Python', 'Java', 'C++', 'JavaScript']);
 
 // ====================================================================
 
@@ -160,18 +116,13 @@ const pool = new Pool({
 //     descricao TEXT,
 //     estudo_id INTEGER REFERENCES estudos(id),
 //     pontos INTEGER,
-//     materiais JSON
+//     materiais JSON,
+//     videoConteudo VARCHAR(255),
+//     tempoMaximo INTEGER
 // );
 
-// ALTER TABLE conteudos
-// ADD COLUMN videoConteudo VARCHAR(255);
-
-// ALTER TABLE conteudos
-// ADD COLUMN tempoMaximo INTEGER;
-
-
-
 // BACKEND 
+
 // INSERT INTO conteudos (titulo, descricao, estudo_id, pontos, materiais) VALUES
 //     ('Introdução ao Node.js', 'Aprenda sobre o ambiente de execução JavaScript server-side.', 1, 100, '["https://developer.mozilla.org/pt-BR/docs/Learn/Server-side/Express_Nodejs/Introduction", "https://learn.microsoft.com/pt-br/training/modules/intro-to-nodejs/", "https://dev.to/gabrielhsilvestre/introducao-ao-nodejs-14l1"]');
 
@@ -213,6 +164,23 @@ const pool = new Pool({
 // INSERT INTO conteudos (titulo, descricao, estudo_id, pontos) VALUES
 //     ('Consumindo APIs RESTful com Fetch API', 'Como consumir dados de APIs RESTful utilizando a Fetch API do JavaScript.', 2, 500);
 
+
+
+// PARA ESTUDO DE CASOS SOBRE ALGORITMOS:
+
+// INSERT INTO conteudos (titulo, descricao, estudo_id, pontos, materiais) VALUES
+//     ('Introdução a Algoritmos', 'Aprenda os conceitos básicos de algoritmos, incluindo definição, importância e exemplos simples.', 7, 50, '["https://example.com/introducao-algoritmos"]');
+
+// INSERT INTO conteudos (titulo, descricao, estudo_id, pontos, materiais) VALUES
+//     ('Estruturas de Controle em Algoritmos', 'Aprenda sobre as estruturas de controle essenciais em algoritmos, incluindo estruturas de decisão (if, else) e estruturas de repetição (for, while).', 7, 100, '["https://example.com/estruturas-controle-algoritmos"]');
+
+// INSERT INTO conteudos (titulo, descricao, estudo_id, pontos, materiais) VALUES
+//     ('Ordenação de Dados em Algoritmos', 'Explore os diferentes métodos de ordenação de dados em algoritmos, incluindo bubble sort, insertion sort e quicksort.', 7, 150, '["https://example.com/ordenacao-dados-algoritmos"]');
+
+
+
+
+
 // ====================================================================
 
 
@@ -233,13 +201,9 @@ const pool = new Pool({
 //     opcao_b VARCHAR(255),
 //     opcao_c VARCHAR(255),
 //     opcao_d VARCHAR(255),
-//     resposta_correta CHAR(1)
+//     resposta_correta CHAR(1),
+//     minutagemPergunta INTEGER
 // );
-
-// ALTER TABLE perguntas
-// ADD COLUMN minutagemPergunta INTEGER;
-
-
 
 // PERGUNTA OFICIAL - BACKEND:
 
@@ -349,19 +313,70 @@ const pool = new Pool({
 //         ('Como você renderiza um componente React dentro de outro componente?', (SELECT id FROM conteudos WHERE titulo = 'React.js Fundamentos'), 'Usando a função renderComponent().', 'Utilizando a tag do componente como se fosse uma tag HTML.', 'Importando o componente e chamando-o como uma função.', 'Usando o método displayComponent().', 'B');
     
 // // --------- Consumindo APIs RESTful com Fetch API
-//     INSERT INTO perguntas (pergunta, conteudo_id, opcao_a, opcao_b, opcao_c, opcao_d, resposta_correta) VALUES
-//         ('Qual é a função da Fetch API em JavaScript?', (SELECT id FROM conteudos WHERE titulo = 'Consumindo APIs RESTful com Fetch API'), 'Manipular datas.', 'Consumir dados de APIs RESTful.', 'Manipular strings.', 'Criar elementos HTML dinamicamente.', 'B');
+    // INSERT INTO perguntas (pergunta, conteudo_id, opcao_a, opcao_b, opcao_c, opcao_d, resposta_correta) VALUES
+    //     ('Qual é a função da Fetch API em JavaScript?', (SELECT id FROM conteudos WHERE titulo = 'Consumindo APIs RESTful com Fetch API'), 'Manipular datas.', 'Consumir dados de APIs RESTful.', 'Manipular strings.', 'Criar elementos HTML dinamicamente.', 'B');
     
-//     INSERT INTO perguntas (pergunta, conteudo_id, opcao_a, opcao_b, opcao_c, opcao_d, resposta_correta) VALUES
-//         ('Como você faz uma requisição GET usando a Fetch API?', (SELECT id FROM conteudos WHERE titulo = 'Consumindo APIs RESTful com Fetch API'), 'fetch(url, { method: "GET" })', 'fetch.get(url)', 'fetch(url)', 'fetch.get(url, { method: "GET" })', 'C');
+    // INSERT INTO perguntas (pergunta, conteudo_id, opcao_a, opcao_b, opcao_c, opcao_d, resposta_correta) VALUES
+    //     ('Como você faz uma requisição GET usando a Fetch API?', (SELECT id FROM conteudos WHERE titulo = 'Consumindo APIs RESTful com Fetch API'), 'fetch(url, { method: "GET" })', 'fetch.get(url)', 'fetch(url)', 'fetch.get(url, { method: "GET" })', 'C');
     
-//     INSERT INTO perguntas (pergunta, conteudo_id, opcao_a, opcao_b, opcao_c, opcao_d, resposta_correta) VALUES
-//         ('O que é uma promessa (Promise) em JavaScript?', (SELECT id FROM conteudos WHERE titulo = 'Consumindo APIs RESTful com Fetch API'), 'Uma função que retorna um valor de forma síncrona.', 'Uma função que encapsula um valor que pode estar disponível imediatamente ou no futuro.', 'Uma função que só pode ser executada uma vez.', 'Uma função que permite aguardar a resposta de uma requisição assíncrona.', 'B');
+    // INSERT INTO perguntas (pergunta, conteudo_id, opcao_a, opcao_b, opcao_c, opcao_d, resposta_correta) VALUES
+    //     ('O que é uma promessa (Promise) em JavaScript?', (SELECT id FROM conteudos WHERE titulo = 'Consumindo APIs RESTful com Fetch API'), 'Uma função que retorna um valor de forma síncrona.', 'Uma função que encapsula um valor que pode estar disponível imediatamente ou no futuro.', 'Uma função que só pode ser executada uma vez.', 'Uma função que permite aguardar a resposta de uma requisição assíncrona.', 'B');
     
-//     INSERT INTO perguntas (pergunta, conteudo_id, opcao_a, opcao_b, opcao_c, opcao_d, resposta_correta) VALUES
-//         ('Como você lida com erros em uma requisição Fetch?', (SELECT id FROM conteudos WHERE titulo = 'Consumindo APIs RESTful com Fetch API'), 'Usando a instrução try...catch.', 'Utilizando o método catch() na promessa retornada pela requisição.', 'Passando uma função de callback para o parâmetro error na requisição.', 'Não é possível lidar com erros em requisições Fetch.', 'B');
+    // INSERT INTO perguntas (pergunta, conteudo_id, opcao_a, opcao_b, opcao_c, opcao_d, resposta_correta) VALUES
+    //     ('Como você lida com erros em uma requisição Fetch?', (SELECT id FROM conteudos WHERE titulo = 'Consumindo APIs RESTful com Fetch API'), 'Usando a instrução try...catch.', 'Utilizando o método catch() na promessa retornada pela requisição.', 'Passando uma função de callback para o parâmetro error na requisição.', 'Não é possível lidar com erros em requisições Fetch.', 'B');
     
-    // ====================================================================
+
+
+
+// PARA ESTUDO DE CASO:
+
+// 1. Perguntas para o conteúdo "Introdução a Algoritmos"
+
+// INSERT INTO perguntas (pergunta, conteudo_id, opcao_a, opcao_b, opcao_c, opcao_d, resposta_correta) VALUES
+//     ('O que é um algoritmo?', 9, 'Um conjunto de instruções para resolver um problema', 'Um tipo de dado', 'Uma linguagem de programação', 'Um compilador', 'A');
+
+// INSERT INTO perguntas (pergunta, conteudo_id, opcao_a, opcao_b, opcao_c, opcao_d, resposta_correta) VALUES
+//     ('Qual é a principal característica de um algoritmo?', 9, 'Deve ser lento', 'Deve ser infinito', 'Deve ser bem definido e finito', 'Deve ser complicado', 'C');
+
+// INSERT INTO perguntas (pergunta, conteudo_id, opcao_a, opcao_b, opcao_c, opcao_d, resposta_correta) VALUES
+//     ('Qual destas não é uma característica de um algoritmo?', 9, 'Claridade', 'Ambiguidade', 'Finito', 'Bem definido', 'B');
+
+// INSERT INTO perguntas (pergunta, conteudo_id, opcao_a, opcao_b, opcao_c, opcao_d, resposta_correta) VALUES
+//     ('Qual das opções abaixo é um exemplo de algoritmo?', 9, 'Receita de bolo', 'Um livro de romance', 'Um filme', 'Uma pintura', 'A');
+
+
+// ----------
+
+// 2. Perguntas para o conteúdo "Estruturas de Controle em Algoritmos"
+
+// INSERT INTO perguntas (pergunta, conteudo_id, opcao_a, opcao_b, opcao_c, opcao_d, resposta_correta) VALUES
+//     ('Qual das opções a seguir é uma estrutura de decisão em algoritmos?', 10, 'for', 'while', 'if', 'switch', 'C');
+
+// INSERT INTO perguntas (pergunta, conteudo_id, opcao_a, opcao_b, opcao_c, opcao_d, resposta_correta) VALUES
+//     ('Qual estrutura de controle é usada para executar um bloco de código várias vezes?', 10, 'if', 'for', 'else', 'switch', 'B');
+
+
+// INSERT INTO perguntas (pergunta, conteudo_id, opcao_a, opcao_b, opcao_c, opcao_d, resposta_correta) VALUES
+//     ('O que a estrutura de controle "while" faz?', 10, 'Executa um bloco de código um número específico de vezes', 'Executa um bloco de código enquanto uma condição é verdadeira', 'Executa um bloco de código se uma condição for verdadeira', 'Para a execução do programa', 'B');
+
+// INSERT INTO perguntas (pergunta, conteudo_id, opcao_a, opcao_b, opcao_c, opcao_d, resposta_correta) VALUES
+//     ('Qual das alternativas a seguir NÃO é uma estrutura de repetição?', 10, 'for', 'while', 'do-while', 'if', 'D');
+
+
+// 3. Perguntas para o conteúdo "Ordenação de Dados em Algoritmos"
+
+// INSERT INTO perguntas (pergunta, conteudo_id, opcao_a, opcao_b, opcao_c, opcao_d, resposta_correta) VALUES
+//     ('Qual é a principal característica do algoritmo bubble sort?', 16, 'É um algoritmo de complexidade O(n log n)', 'Ordena os elementos comparando cada elemento adjacente e os trocando de lugar se estiverem na ordem errada', 'Utiliza uma pilha para realizar a ordenação', 'É eficiente apenas para pequenos conjuntos de dados', 'B');
+
+// INSERT INTO perguntas (pergunta, conteudo_id, opcao_a, opcao_b, opcao_c, opcao_d, resposta_correta) VALUES
+//     ('O que é o algoritmo insertion sort?', 16, 'Um algoritmo que divide repetidamente a lista em metades iguais até que a lista seja ordenada', 'Um algoritmo que ordena a lista comparando os elementos adjacentes e trocando-os se estiverem na ordem errada', 'Um algoritmo que constrói uma solução passo a passo, sempre escolhendo a próxima peça mais útil', 'Um algoritmo que percorre a lista várias vezes, comparando elementos adjacentes e trocando-os de lugar se estiverem na ordem errada', 'C');
+
+// INSERT INTO perguntas (pergunta, conteudo_id, opcao_a, opcao_b, opcao_c, opcao_d, resposta_correta) VALUES
+//     ('Qual das opções a seguir é um exemplo de algoritmo de ordenação eficiente para grandes conjuntos de dados?', 16, 'Bubble sort', 'Insertion sort', 'Quicksort', 'Selection sort', 'C');
+
+// INSERT INTO perguntas (pergunta, conteudo_id, opcao_a, opcao_b, opcao_c, opcao_d, resposta_correta) VALUES
+//     ('Como funciona o algoritmo quicksort?', 16, 'Divide a lista em metades iguais até que a lista seja ordenada', 'Ordena a lista percorrendo-a várias vezes e trocando elementos adjacentes se estiverem na ordem errada', 'Utiliza um método de seleção direta para ordenar a lista', 'Divide a lista com base em um "pivô" e depois ordena recursivamente cada metade', 'D');
+// ====================================================================
 
 
 // 8 - TABELA questionnaire_responses
