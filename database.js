@@ -172,10 +172,13 @@ const pool = new Pool({
 //     ('Introdução a Algoritmos', 'Aprenda os conceitos básicos de algoritmos, incluindo definição, importância e exemplos simples.', 7, 50, '["https://example.com/introducao-algoritmos"]');
 
 // INSERT INTO conteudos (titulo, descricao, estudo_id, pontos, materiais) VALUES
-//     ('Estruturas de Controle em Algoritmos', 'Aprenda sobre as estruturas de controle essenciais em algoritmos, incluindo estruturas de decisão (if, else) e estruturas de repetição (for, while).', 7, 100, '["https://example.com/estruturas-controle-algoritmos"]');
+//     ('Expressões e Operadores em C++', 'Explore as expressões aritméticas e lógicas em C++, aprendendo a avaliar e entender o funcionamento dos operadores.', 7, 100, '["https://docente.ifrn.edu.br/brunogurgel/disciplinas/2012/fprog/aulas/cpp/aula3-operadores_e_expressoes.pdf"]');
 
-// INSERT INTO conteudos (titulo, descricao, estudo_id, pontos, materiais) VALUES
-//     ('Ordenação de Dados em Algoritmos', 'Explore os diferentes métodos de ordenação de dados em algoritmos, incluindo bubble sort, insertion sort e quicksort.', 7, 150, '["https://example.com/ordenacao-dados-algoritmos"]');
+
+// INSERT INTO conteudos (titulo, descricao, estudo_id, pontos, materiais, videoConteudo) VALUES
+//     ('Estruturas de Controle em Algoritmos', 'Aprenda sobre as estruturas de controle essenciais em algoritmos, incluindo estruturas de decisão (if, else) e estruturas de repetição (for, while).', 7, 100, '["http://wiki.icmc.usp.br/images/e/e7/SCC0120_Rosane-04-algoritmos_controle_2014.pdf"]', 'https://www.youtube.com/watch?v=uCryhRKDg2w&feature=youtu.be');
+
+
 
 
 
@@ -347,35 +350,44 @@ const pool = new Pool({
 
 // ----------
 
-// 2. Perguntas para o conteúdo "Estruturas de Controle em Algoritmos"
+// 2. Perguntas....
 
 // INSERT INTO perguntas (pergunta, conteudo_id, opcao_a, opcao_b, opcao_c, opcao_d, resposta_correta) VALUES
-//     ('Qual das opções a seguir é uma estrutura de decisão em algoritmos?', 10, 'for', 'while', 'if', 'switch', 'C');
+// ('Dadas as seguintes declarações: int a = 9, b = 4, c = -2; Qual o resultado da seguinte expressão em C++: (a + c) / (2 * b)', 9, '1', '1.75', '0.875', '0.5', 'C');
 
 // INSERT INTO perguntas (pergunta, conteudo_id, opcao_a, opcao_b, opcao_c, opcao_d, resposta_correta) VALUES
-//     ('Qual estrutura de controle é usada para executar um bloco de código várias vezes?', 10, 'if', 'for', 'else', 'switch', 'B');
+// ('Dadas as seguintes declarações: int a = 9, b = 4, c = -2; Qual o resultado da seguinte expressão: a % b - c', 9, '3', '1', '-1', '0', 'A');
 
 
 // INSERT INTO perguntas (pergunta, conteudo_id, opcao_a, opcao_b, opcao_c, opcao_d, resposta_correta) VALUES
-//     ('O que a estrutura de controle "while" faz?', 10, 'Executa um bloco de código um número específico de vezes', 'Executa um bloco de código enquanto uma condição é verdadeira', 'Executa um bloco de código se uma condição for verdadeira', 'Para a execução do programa', 'B');
+// ('Dadas as seguintes declarações: int a = 9, b = 4, c = -2; float r = 3.5, s = 2.0, t = 0.5; Qual o resultado da seguinte expressão em C++: (a < b) || (r > s)', 9, 'true', 'false', '1', '0', 'A');
 
 // INSERT INTO perguntas (pergunta, conteudo_id, opcao_a, opcao_b, opcao_c, opcao_d, resposta_correta) VALUES
-//     ('Qual das alternativas a seguir NÃO é uma estrutura de repetição?', 10, 'for', 'while', 'do-while', 'if', 'D');
+// ('Dadas as seguintes declarações: int a = 9, b = 4, c = -2; float r = 3.5, s = 2.0, t = 0.5; Qual o resultado da seguinte expressão em C++: (b * t) == s && (a - b) < r', 9, 'true', 'false', '1', '0', 'B');
 
 
-// 3. Perguntas para o conteúdo "Ordenação de Dados em Algoritmos"
+// 3. Perguntas para o conteúdo "Estruturas de Controle em Algoritmos"
 
-// INSERT INTO perguntas (pergunta, conteudo_id, opcao_a, opcao_b, opcao_c, opcao_d, resposta_correta) VALUES
-//     ('Qual é a principal característica do algoritmo bubble sort?', 16, 'É um algoritmo de complexidade O(n log n)', 'Ordena os elementos comparando cada elemento adjacente e os trocando de lugar se estiverem na ordem errada', 'Utiliza uma pilha para realizar a ordenação', 'É eficiente apenas para pequenos conjuntos de dados', 'B');
+// INSERT INTO perguntas (pergunta, conteudo_id, opcao_a, opcao_b, opcao_c, opcao_d, resposta_correta, minutagemPergunta) VALUES
+//     ('Qual das opções a seguir é uma estrutura de decisão em algoritmos?', 10, 'for', 'while', 'if', 'switch', 'C', 17);
 
-// INSERT INTO perguntas (pergunta, conteudo_id, opcao_a, opcao_b, opcao_c, opcao_d, resposta_correta) VALUES
-//     ('O que é o algoritmo insertion sort?', 16, 'Um algoritmo que divide repetidamente a lista em metades iguais até que a lista seja ordenada', 'Um algoritmo que ordena a lista comparando os elementos adjacentes e trocando-os se estiverem na ordem errada', 'Um algoritmo que constrói uma solução passo a passo, sempre escolhendo a próxima peça mais útil', 'Um algoritmo que percorre a lista várias vezes, comparando elementos adjacentes e trocando-os de lugar se estiverem na ordem errada', 'C');
+// INSERT INTO perguntas (pergunta, conteudo_id, opcao_a, opcao_b, opcao_c, opcao_d, resposta_correta, minutagemPergunta) VALUES
+//     ('Qual estrutura de controle é usada para executar um bloco de código várias vezes?', 10, 'if', 'for', 'else', 'switch', 'B', 47);
 
-// INSERT INTO perguntas (pergunta, conteudo_id, opcao_a, opcao_b, opcao_c, opcao_d, resposta_correta) VALUES
-//     ('Qual das opções a seguir é um exemplo de algoritmo de ordenação eficiente para grandes conjuntos de dados?', 16, 'Bubble sort', 'Insertion sort', 'Quicksort', 'Selection sort', 'C');
 
-// INSERT INTO perguntas (pergunta, conteudo_id, opcao_a, opcao_b, opcao_c, opcao_d, resposta_correta) VALUES
-//     ('Como funciona o algoritmo quicksort?', 16, 'Divide a lista em metades iguais até que a lista seja ordenada', 'Ordena a lista percorrendo-a várias vezes e trocando elementos adjacentes se estiverem na ordem errada', 'Utiliza um método de seleção direta para ordenar a lista', 'Divide a lista com base em um "pivô" e depois ordena recursivamente cada metade', 'D');
+// INSERT INTO perguntas (pergunta, conteudo_id, opcao_a, opcao_b, opcao_c, opcao_d, resposta_correta, minutagemPergunta) VALUES
+//     ('O que a estrutura de controle "while" faz?', 10, 'Executa um bloco de código um número específico de vezes', 'Executa um bloco de código enquanto uma condição é verdadeira', 'Executa um bloco de código se uma condição for verdadeira', 'Para a execução do programa', 'B', 71);
+
+// INSERT INTO perguntas (pergunta, conteudo_id, opcao_a, opcao_b, opcao_c, opcao_d, resposta_correta, minutagemPergunta) VALUES
+//     ('Qual das alternativas a seguir NÃO é uma estrutura de repetição?', 10, 'for', 'while', 'do-while', 'if', 'D', 101);
+
+// MINUTAGENS:
+// 17
+// 47
+// 71
+// 102
+
+// 3. 
 // ====================================================================
 
 
